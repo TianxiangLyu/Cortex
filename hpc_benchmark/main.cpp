@@ -171,8 +171,6 @@ int main(int argc, char *argv[])
         L1e[i].y3_ = d(eng);
     for (CX::S32 i = 0; i < L1i.getLocalNum(); i++)
         L1i[i].y3_ = d(eng);
-    for (CX::S32 i = 0; i < L1e.getLocalNum(); i++)
-        L1e_to_L1e[i].n_incoming = CE;
 
     CX::S32 exc_spk_count = 0;
     CX::S32 inh_spk_count = 0;

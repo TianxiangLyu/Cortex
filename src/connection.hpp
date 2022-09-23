@@ -145,6 +145,7 @@ namespace Cortex
                     epj_link_[link_set[j]].setLink(ptr[link_set[j]], i);
                     ptr[link_set[j]]++;
                 }
+                epi_org_[i].n_in = indegree;
             }
         }
         void SetIndegreeMultapsesAutapses(const S32 indegree)
