@@ -33,4 +33,7 @@ Using a modified MPI_Group to determine the layer allocation on specific process
 CX::Layer<iaf>::Default L1e("L1e", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NE), spec_group);
 ```
 
+The load balance scheme with its related codes is based on Multi-section Division Method from FDPS  
+(see, https://github.com/FDPS/FDPS/blob/master/LICENSE)
+
 Email:  tianxianglyu at icloud.com  (please replace at by @)
