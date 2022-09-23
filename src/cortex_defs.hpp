@@ -1559,9 +1559,9 @@ namespace Cortex{
 #endif
         MemoryPool::initialize(mpool_size);
         if (Comm::getRank() == 0) {
-            std::cerr << "Home   : https://github.com/Cortex-Initiative/Cortex " << std::endl;
+            std::cerr << "Home   : https://github.com/TianxiangLyu/Cortex " << std::endl;
             std::cerr << "E-mail : tianxianglyu@icloud.com " << std::endl;
-            std::cerr << "Licence: MIT (see, https://github.com/Cortex-Initiative/Cortex/blob/master/LICENSE) " << std::endl;
+            std::cerr << "Licence: MIT (see, https://github.com/TianxiangLyu/Cortex/blob/main/LICENSE) " << std::endl;
         }
     }
 

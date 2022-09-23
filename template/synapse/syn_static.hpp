@@ -11,7 +11,7 @@ public:
     {
         CX::S32 n_link;
         CX::aligned_vector<CX::S32> link;
-        CX::aligned_vector<CX::F32> weight;
+        CX::aligned_vector<CX::F64> weight;
         void init(const CX::S32 num)
         {
             this->n_link = num;
@@ -19,7 +19,7 @@ public:
             weight.resize(num);
         }
         void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
-        void setWeight(const CX::S32 id, const CX::S32 value) { this->weight[id] = value; }
+        void setWeight(const CX::S32 id, const CX::F64 value) { this->weight[id] = value; }
     };
     struct Post
     {
@@ -61,7 +61,11 @@ public:
     };
     class CalcInteraction
     {
+    private:
+        const CX::F64 weight;
     public:
+        CalcInteraction(const CX::F64 _weight)
+        : weight(_weight){};
         void operator()(Post *const ep_i, const CX::S32 Nip,
                         Synapse *const ep_j, const CX::S32 Njp)
         {
@@ -69,7 +73,12 @@ public:
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {
                     const CX::S32 adr = ep_j[j].link.link[i];
-                    ep_i[adr].input += ep_j[j].link.weight[i];
+                    ep_i[adr].input += weight;
+                    if(weight != ep_j[j].link.weight[i] && weight < 0)
+                    {
+                        std::cout<<weight<<" "<<ep_j[j].link.weight[i]<<std::endl;
+                    }
+                    //ep_i[adr].input += ep_j[j].link.weight[i];
                 }
         }
     };

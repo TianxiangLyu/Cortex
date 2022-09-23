@@ -61,14 +61,8 @@ public:
                 Kplus[i] = 0;
             }
         }
-        void setLink(const CX::S32 id, const CX::S32 target)
-        {
-            this->link[id] = target;
-        }
-        void setWeight(const CX::S32 id, const CX::S32 value)
-        {
-            this->weight[id] = value;
-        }
+        void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
+        void setWeight(const CX::S32 id, const CX::F64 value) { this->weight[id] = value; }
     };
     struct Post
     {
@@ -78,7 +72,7 @@ public:
         const CX::F64 Rsearch;
         // for STDP
         CX::F64 lastSpkTime = -1.0;
-        CX::S32 n_in = 0;//number of incoming connections
+        CX::S32 n_in = 0;     // number of incoming connections
         CX::F64 Kminus = 0.0; // the current time-dependent weighting of the STDP update rule for depression
         CX::F64 Kminus_triplet = 0.0;
         CX::F64 trace = 0;

@@ -2,6 +2,7 @@
 #include <cortex.hpp>
 #include <neuron/iaf_psc_alpha.hpp>
 #include <synapse/stdp_pl_synapse_hom.hpp>
+#include <synapse/syn_static.hpp>
 #include <synapse/syn_static_hom.hpp>
 #ifdef USE_GSL
 #include <gsl/gsl_sf_lambert.h>
@@ -129,8 +130,8 @@ int main(int argc, char *argv[])
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
     typedef stdp_pl_synapse_hom<stdp_params> stdp;
-    typedef syn_static_hom<syn_params> syn;
     typedef iaf_psc_alpha<model_params> iaf_psc;
+    typedef syn_static_hom<syn_params> syn;
 
     CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NE), world_group);
     CX::Layer<iaf_psc>::Default L1i("L1i", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NI), world_group);
@@ -140,8 +141,8 @@ int main(int argc, char *argv[])
     CX::Connection<iaf_psc, syn, iaf_psc> L1e_to_L1i(L1e, L1i, iaf_psc::Channel::EXC);
     CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1i(L1i, L1i, iaf_psc::Channel::INH);
 
-    const CX::S32 num_E = L1e.getLocalNum();
-    const CX::S32 num_I = L1i.getLocalNum();
+    const CX::S32 num_E = L1e.getNumLocal();
+    const CX::S32 num_I = L1i.getNumLocal();
     const CX::S32 CE = 9000;
     const CX::S32 CI = 2250;
 
@@ -164,16 +165,17 @@ int main(int argc, char *argv[])
     L1i_to_L1e.SetWeightAll(brunel_params::g * JE_pA);
     L1i_to_L1i.SetWeightAll(brunel_params::g * JE_pA);
 
+    syn::CalcInteraction exc(JE_pA);
+    syn::CalcInteraction inh(brunel_params::g * JE_pA);
+
     std::random_device rd;
     std::default_random_engine eng(rd());
     std::normal_distribution<CX::F64> d(brunel_params::mean_potential, brunel_params::sigma_potential);
-    for (CX::S32 i = 0; i < L1e.getLocalNum(); i++)
+    for (CX::S32 i = 0; i < L1e.getNumLocal(); i++)
         L1e[i].y3_ = d(eng);
-    for (CX::S32 i = 0; i < L1i.getLocalNum(); i++)
+    for (CX::S32 i = 0; i < L1i.getNumLocal(); i++)
         L1i[i].y3_ = d(eng);
 
-    CX::S32 exc_spk_count = 0;
-    CX::S32 inh_spk_count = 0;
     CX::S32 step = 1;
     const CX::F64 time_offset = CX::GetWtime();
     for (CX::F64 time = 0; time < presimtime; time += dt, step++)
@@ -181,18 +183,18 @@ int main(int argc, char *argv[])
         L1e.Update(time);
         L1i.Update(time);
         L1e_to_L1e.PreAct(time, stdp::CalcInteraction(time));
-        L1e_to_L1i.PreAct(time, syn::CalcInteraction(JE_pA));
-        L1i_to_L1e.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
-        L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
+        L1e_to_L1i.PreAct(time, exc);
+        L1i_to_L1e.PreAct(time, inh);
+        L1i_to_L1i.PreAct(time, inh);
         if (time > 1.5)
         {
             std::random_device rd;
             const CX::F64 ratio = 1e-3 * dt;
             std::default_random_engine eng(rd());
             std::poisson_distribution<CX::S64> d(nu_ext * CE * 1000 * ratio);
-            for (CX::S32 i = 0; i < L1e.getLocalNum(); ++i)
+            for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
                 L1e[i].input_ex_ += d(eng) * JE_pA;
-            for (CX::S32 i = 0; i < L1i.getLocalNum(); ++i)
+            for (CX::S32 i = 0; i < L1i.getNumLocal(); ++i)
                 L1i[i].input_ex_ += d(eng) * JE_pA;
         }
         L1e.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
@@ -204,41 +206,43 @@ int main(int argc, char *argv[])
         L1e.Update(time);
         L1i.Update(time);
         L1e_to_L1e.PreAct(time, stdp::CalcInteraction(time));
-        L1e_to_L1i.PreAct(time, syn::CalcInteraction(JE_pA));
-        L1i_to_L1e.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
-        L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
+        L1e_to_L1i.PreAct(time, exc);
+        L1i_to_L1e.PreAct(time, inh);
+        L1i_to_L1i.PreAct(time, inh);
         if (time > 1.5)
         {
             std::random_device rd;
             const CX::F64 ratio = 1e-3 * dt;
             std::default_random_engine eng(rd());
             std::poisson_distribution<CX::S64> d(nu_ext * CE * 1000 * ratio);
-            for (CX::S32 i = 0; i < L1e.getLocalNum(); ++i)
+            for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
                 L1e[i].input_ex_ += d(eng) * JE_pA;
-            for (CX::S32 i = 0; i < L1i.getLocalNum(); ++i)
+            for (CX::S32 i = 0; i < L1i.getNumLocal(); ++i)
                 L1i[i].input_ex_ += d(eng) * JE_pA;
         }
         L1e.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
         L1i.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
 
-        /* for (CX::S32 i = 0; i < L1e.getLocalNum(); ++i)
+        for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
             L1e[i].recordSpike();
-        for (CX::S32 i = 0; i < L1i.getLocalNum(); i++)
+        for (CX::S32 i = 0; i < L1i.getNumLocal(); i++)
             L1i[i].recordSpike();
-        exc_spk_count = 0;
-        inh_spk_count = 0;
-        for (CX::S32 i = 0; i < L1e.getLocalNum(); i++)
-            exc_spk_count += L1e[i].spike;
-        for (CX::S32 i = 0; i < L1i.getLocalNum(); i++)
-            inh_spk_count += L1i[i].spike;
-        exc_spk_count = CX::Comm::getSum(exc_spk_count);
-        inh_spk_count = CX::Comm::getSum(inh_spk_count);
-        if (CX::Comm::getRank() == 0)
-            std::cout << "step " << step << " exc_spk_count " << exc_spk_count << " inh_spk_count " << inh_spk_count << std::endl; */
     }
     const CX::F64 sim_time = CX::GetWtime() - time_offset - pre_sim_time;
     if (CX::Comm::getRank() == 0)
         std::cout << "pre-sim time: " << pre_sim_time << std::endl << "sim time: " << sim_time << std::endl;
+    CX::S32 exc_spk_count = 0;
+    CX::S32 inh_spk_count = 0;
+    for (CX::S32 i = 0; i < L1e.getNumLocal(); i++)
+        exc_spk_count += L1e[i].spikeNum;
+    for (CX::S32 i = 0; i < L1i.getNumLocal(); i++)
+        inh_spk_count += L1i[i].spikeNum;
+    exc_spk_count = CX::Comm::getSum(exc_spk_count);
+    inh_spk_count = CX::Comm::getSum(inh_spk_count);
+    const CX::F64 avg_spk_exc = exc_spk_count / (CX::F64)L1e.getNumGlobal();
+    const CX::F64 avg_spk_inh = inh_spk_count / (CX::F64)L1i.getNumGlobal();
+    if (CX::Comm::getRank() == 0)
+        std::cout << avg_spk_exc / simtime * 1e3 << " " << avg_spk_inh / simtime * 1e3 << std::endl;
     CX::Comm::barrier();
     CX::Finalize();
     return 0;

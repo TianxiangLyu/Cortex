@@ -34,7 +34,7 @@ namespace Cortex
               spk_tot_(src.spk_tot_),
               dst_neuron_(dst.neuron_)
         {
-            const S32 n_epi = dst.getLocalNum();
+            const S32 n_epi = dst.getNumLocal();
             src.addConn(conn_id_, delay, dst.getDinfo());
             if (n_epi > 0)
             {

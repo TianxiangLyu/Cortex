@@ -6,7 +6,7 @@ Cortex is a high-performance framework for computational neuroscience
 
 An equivalent program to [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) in [NEST](https://github.com/nest/nest-simulator). 
 
-To run HPC Benchmark, A compiler support at least C++11 standard, with MPI library is required. 
+To run HPC Benchmark, A compiler support at least C++11 standard with MPI library is required. 
 
 [GSL](https://www.gnu.org/software/gsl/) is an optional library for Lambert W function. 
 

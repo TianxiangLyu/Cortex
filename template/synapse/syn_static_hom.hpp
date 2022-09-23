@@ -17,7 +17,7 @@ public:
             link.resize(num);
         }
         void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
-        void setWeight(const CX::S32 id, const CX::S32 value) {}
+        void setWeight(const CX::S32 id, const CX::F64 value) {}
     };
     struct Post
     {

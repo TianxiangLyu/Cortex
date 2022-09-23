@@ -83,8 +83,8 @@ namespace Cortex
         };
         S32 getLayerID() { return layer_id_; }
         std::string getLayerName() { return layer_name_; }
-        S64 getLocalNum() { return neuron_.getNumberOfParticleLocal(); }
-        S64 getGlobalNum() { return neuron_.getNumberOfParticleGlobal(); }
+        S64 getNumLocal() { return neuron_.getNumberOfParticleLocal(); }
+        S64 getNumGlobal() { return neuron_.getNumberOfParticleGlobal(); }
         Tneu *data(const S32 id = 0) const { return neuron_.getParticlePointer(id); }
         DomainInfo &getDinfo() { return dinfo_; }
         void checkLayerName(const std::string layer_name)
