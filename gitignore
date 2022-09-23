@@ -1,0 +1,8 @@
+*.out
+*.optrpt
+*.o
+.vscode
+mfile
+*.sh
+.VSCodeCounter
+.DS_Store
