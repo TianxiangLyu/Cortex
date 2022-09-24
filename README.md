@@ -4,7 +4,15 @@ Cortex is a high-performance framework for computational neuroscience
 
 ## HPC Benchmark
 
-An equivalent program to [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) in [NEST](https://github.com/nest/nest-simulator). 
+A program of balanced random network with spike-timing-dependent plasticity equivalent to [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) in [NEST](https://github.com/nest/nest-simulator)
+
+The average firing rates might be higher because precise spiking-times approaches are adopted for resolution preserving as default.
+Please replace the templates "iaf_psc_alpha" with "iaf_psc_alpha_ps" and "poisson_generator" with "poisson_generator_ps" in [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) for comparison.
+
+References  
+[1] Morrison A, Aertsen A, Diesmann M (2007). Spike-timing-dependent plasticity in balanced random networks. Neural Comput 19(6):1437-67  
+[2] Helias et al (2012). Supercomputers ready for use as discovery machines for neuroscience. Front. Neuroinform. 6:26  
+[3] Kunkel et al (2014). Spiking network simulation code for petascale computers. Front. Neuroinform. 8:78  
 
 To run HPC Benchmark, A compiler support at least C++11 standard with MPI library is required. 
 
@@ -15,7 +23,7 @@ Please modify the requirement specification in ./hpc_benchmark/Makefile
 ```
 cd ./hpc_benchmark
 make
-mpirun -n 36 ./hpc_benchmark.out -z 40 -p 0 -s 500
+mpirun -n 36 ./hpc_benchmark.out -z 30 -p 0 -s 500
 ```
 Using the arguments for specific size (-z), pre-simulation time (-p), simulation time (-s). 
 
