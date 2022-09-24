@@ -23,6 +23,7 @@ namespace Cortex
     private:
         const S32 layer_id_;
         const std::string layer_name_;
+        ReallocatableArray<S32> adr_for_record_;
 
     public:
         LayerTimeProfile time_profile;

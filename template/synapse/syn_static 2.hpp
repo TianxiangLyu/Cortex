@@ -3,7 +3,7 @@
 #include <vector>
 namespace CX = Cortex;
 template <class params>
-class syn_static_hom
+class syn_static
 {
 public:
     constexpr static const CX::F64 delay = params::delay;
@@ -11,13 +11,15 @@ public:
     {
         CX::S32 n_link;
         CX::aligned_vector<CX::S32> link;
+        CX::aligned_vector<CX::F64> weight;
         void init(const CX::S32 num)
         {
             this->n_link = num;
             link.resize(num);
+            weight.resize(num);
         }
         void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
-        void setWeight(const CX::S32 id, const CX::F64 value) {}
+        void setWeight(const CX::S32 id, const CX::F64 value) { this->weight[id] = value; }
     };
     struct Post
     {
@@ -27,7 +29,7 @@ public:
         CX::F32 Rsearch;
         CX::F32 peak;
         CX::F32 t_lastSpike;
-        CX::S32 n_link;
+        CX::S32 n_in;
         CX::F64 &input;
         template <class Tfp>
         Post(Tfp &fp, CX::F64 &_input)
@@ -72,6 +74,11 @@ public:
                 {
                     const CX::S32 adr = ep_j[j].link.link[i];
                     ep_i[adr].input += weight;
+                    if(weight != ep_j[j].link.weight[i] && weight < 0)
+                    {
+                        std::cout<<weight<<" "<<ep_j[j].link.weight[i]<<std::endl;
+                    }
+                    //ep_i[adr].input += ep_j[j].link.weight[i];
                 }
         }
     };

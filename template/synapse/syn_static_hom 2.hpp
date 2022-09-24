@@ -27,7 +27,7 @@ public:
         CX::F32 Rsearch;
         CX::F32 peak;
         CX::F32 t_lastSpike;
-        CX::S32 n_link;
+        CX::S32 n_in;
         CX::F64 &input;
         template <class Tfp>
         Post(Tfp &fp, CX::F64 &_input)

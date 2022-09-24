@@ -206,7 +206,7 @@ public:
               EPSCInitialValue_(1.0 * std::exp(1) / Tmodel::tau_syn_ex),
               IPSCInitialValue_(1.0 * std::exp(1) / Tmodel::tau_syn_in),
               P11_ex_(std::exp(-h / Tmodel::tau_syn_ex)),
-              P22_ex_(std::exp(-h / Tmodel::tau_syn_ex)), // exp_tau_syn_ex_
+              P22_ex_(std::exp(-h / Tmodel::tau_syn_ex)),
               P11_in_(std::exp(-h / Tmodel::tau_syn_in)),
               P22_in_(std::exp(-h / Tmodel::tau_syn_in)),
               P33_(std::exp(-h / Tmodel::tau_m)),
@@ -279,84 +279,6 @@ public:
                     neuron[i].y3_ = Tmodel::V_reset;
                     neuron[i].r_ = Tmodel::t_ref;
                 }
-                neuron[i].input_ex_ = 0;
-                neuron[i].input_in_ = 0; // clear input channel
-            }
-        }
-    };
-    class TestDynamics
-    {
-    private:
-        const CX::F64 time;
-        const CX::F64 h_ms_;
-
-        const CX::F64 psc_norm_ex_;    //!< e / tau_syn_ex
-        const CX::F64 psc_norm_in_;    //!< e / tau_syn_in
-        const CX::F64 expm1_tau_m_;    //!< exp(-h/tau_m) - 1
-        const CX::F64 exp_tau_syn_ex_; //!< exp(-h/tau_syn_ex)
-        const CX::F64 exp_tau_syn_in_; //!< exp(-h/tau_syn_in)
-        const CX::F64 P30_;            //!< progagator matrix elem, 3rd row
-        const CX::F64 P31_ex_;         //!< progagator matrix elem, 3rd row (ex)
-        const CX::F64 P32_ex_;         //!< progagator matrix elem, 3rd row (ex)
-        const CX::F64 P31_in_;         //!< progagator matrix elem, 3rd row (in)
-        const CX::F64 P32_in_;         //!< progagator matrix elem, 3rd row (in)
-
-    public:
-        TestDynamics(const CX::F64 _time,
-                     const CX::F64 _dt)
-            : time(_time),
-              h_ms_(_dt),
-              psc_norm_ex_(1.0 * std::exp(1) / Tmodel::tau_syn_ex),
-              psc_norm_in_(1.0 * std::exp(1) / Tmodel::tau_syn_in),
-              expm1_tau_m_(std::expm1(-h_ms_ / Tmodel::tau_m)),
-              exp_tau_syn_ex_(std::exp(-h_ms_ / Tmodel::tau_syn_ex)),
-              exp_tau_syn_in_(std::exp(-h_ms_ / Tmodel::tau_syn_in)),
-              P30_(-Tmodel::tau_m / Tmodel::C_m * expm1_tau_m_),
-              P31_ex_(propagator_31(Tmodel::tau_syn_ex, Tmodel::tau_m, Tmodel::C_m, h_ms_)),
-              P32_ex_(propagator_32(Tmodel::tau_syn_ex, Tmodel::tau_m, Tmodel::C_m, h_ms_)),
-              P31_in_(propagator_31(Tmodel::tau_syn_in, Tmodel::tau_m, Tmodel::C_m, h_ms_)),
-              P32_in_(propagator_32(Tmodel::tau_syn_in, Tmodel::tau_m, Tmodel::C_m, h_ms_)){};
-        void operator()(CX::NeuronInstance<Neuron> &neuron)
-        {
-            for (CX::S32 i = 0; i < neuron.getNumberOfParticleLocal(); ++i)
-            {    
-                if (neuron[i].r_ == 0)
-                {
-                    neuron[i].y3_ = P30_ *
-                                        (neuron[i].y0_ + Tmodel::I_e) +
-                                    P31_ex_ * neuron[i].dI_ex_ +
-                                    P32_ex_ * neuron[i].I_ex_ +
-                                    P31_in_ * neuron[i].dI_in_ +
-                                    P32_in_ * neuron[i].I_in_ +
-                                    expm1_tau_m_ * neuron[i].y3_ +
-                                    neuron[i].y3_;
-                    neuron[i].y3_ = neuron[i].y3_ < Tmodel::LowerBound_ ? Tmodel::LowerBound_ : neuron[i].y3_;
-                }
-                else
-                {
-                    neuron[i].r_--;
-                    neuron[i].spike = 0;
-                }
-
-                neuron[i].I_ex_ = exp_tau_syn_ex_ * h_ms_ * neuron[i].dI_ex_ + exp_tau_syn_ex_ * neuron[i].I_ex_;
-                neuron[i].dI_ex_ = exp_tau_syn_ex_ * neuron[i].dI_ex_;
-
-                const CX::F64 weighted_spikes_ex_ = neuron[i].input_ex_;
-                neuron[i].dI_ex_ += psc_norm_ex_ * weighted_spikes_ex_;
-
-                neuron[i].I_in_ = exp_tau_syn_in_ * h_ms_ * neuron[i].dI_in_ + exp_tau_syn_in_ * neuron[i].I_in_;
-                neuron[i].dI_in_ = exp_tau_syn_in_ * neuron[i].dI_in_;
-
-                const CX::F64 weighted_spikes_in_ = neuron[i].input_in_;
-                neuron[i].dI_in_ += psc_norm_in_ * weighted_spikes_in_;
-
-                if (neuron[i].y3_ >= Tmodel::V_th)
-                {
-                    neuron[i].GetSpike(time);
-                    neuron[i].y3_ = Tmodel::V_reset;
-                    neuron[i].r_ = Tmodel::t_ref;
-                }
-
                 neuron[i].input_ex_ = 0;
                 neuron[i].input_in_ = 0; // clear input channel
             }

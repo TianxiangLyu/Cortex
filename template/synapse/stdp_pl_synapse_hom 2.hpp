@@ -72,7 +72,7 @@ public:
         const CX::F64 Rsearch;
         // for STDP
         CX::F64 lastSpkTime = -1.0;
-        CX::S32 n_link = 0;     // number of incoming connections
+        CX::S32 n_in = 0;     // number of incoming connections
         CX::F64 Kminus = 0.0; // the current time-dependent weighting of the STDP update rule for depression
         CX::F64 Kminus_triplet = 0.0;
         CX::F64 trace = 0;
@@ -85,7 +85,7 @@ public:
               randSeed(fp.randSeed),
               Rsearch(fp.Rsearch),
               lastSpkTime(-1.0),
-              n_link(0),
+              n_in(0),
               Kminus(0.0),
               Kminus_triplet(0.0),
               trace(0.0),
@@ -105,12 +105,12 @@ public:
         inline void updateSpk(const CX::F64 time, const CX::F64 max_delay = delay) // nest set_spiketime
         {
             const CX::F64 currSpkTime = time;
-            if (this->n_link)
+            if (this->n_in)
             {
                 while (this->history.size() > 1)
                 {
                     const CX::F64 next_t_sp = this->history[1].SpkTime;
-                    if (this->history.front().access_counter >= this->n_link && currSpkTime - next_t_sp > max_delay + stdp_eps)
+                    if (this->history.front().access_counter >= this->n_in && currSpkTime - next_t_sp > max_delay + stdp_eps)
                         history.pop_front();
                     else
                         break;
