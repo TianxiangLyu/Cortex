@@ -6,7 +6,7 @@ Cortex is a high-performance framework for computational neuroscience
 
 A program of balanced random network with spike-timing-dependent plasticity equivalent to [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) in [NEST](https://github.com/nest/nest-simulator)
 
-The average firing rates might be higher because precise spiking-times approaches are adopted for resolution preserving as default.
+The average firing rates might be higher because precise spiking-times approaches are adopted for resolution preserving as default.  
 Please replace the templates "iaf_psc_alpha" with "iaf_psc_alpha_ps" and "poisson_generator" with "poisson_generator_ps" in [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) for comparison.
 
 References  
