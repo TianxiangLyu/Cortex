@@ -163,6 +163,10 @@ int main(int argc, char *argv[])
     L1i_to_L1e.SetWeightAll(brunel_params::g * JE_pA);
     L1i_to_L1i.SetWeightAll(brunel_params::g * JE_pA);
 
+    CX::Comm::barrier();
+    L1e.initRMA();
+    L1i.initRMA();
+
     std::random_device rd;
     std::default_random_engine eng(rd());
     std::normal_distribution<CX::F64> d(brunel_params::mean_potential, brunel_params::sigma_potential);
@@ -172,6 +176,7 @@ int main(int argc, char *argv[])
         L1i[i].y3_ = d(eng);
 
     CX::S32 step = 1;
+    CX::Comm::barrier();
     const CX::F64 time_offset = CX::GetWtime();
     for (CX::F64 time = 0; time < presimtime; time += dt, step++)
     {
@@ -222,7 +227,10 @@ int main(int argc, char *argv[])
         for (CX::S32 i = 0; i < L1i.getNumLocal(); i++)
             L1i[i].recordSpike();
     }
+    CX::Comm::barrier();
     const CX::F64 sim_time = CX::GetWtime() - time_offset - pre_sim_time;
+    L1e.freeRMA();
+    L1i.freeRMA();
     if (CX::Comm::getRank() == 0)
         std::cout << "pre-sim time: " << pre_sim_time << std::endl
                   << "sim time: " << sim_time << std::endl;

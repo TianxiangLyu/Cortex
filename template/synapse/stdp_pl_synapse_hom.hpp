@@ -42,18 +42,25 @@ public:
     constexpr static const CX::F64 tau_minus_inv = 1.0 / params::tau_minus;
     constexpr static const CX::F64 tau_minus_triplet = 110.0;
     constexpr static const CX::F64 tau_minus_triplet_inv = 1.0 / tau_minus_triplet;
-    struct LinkInfo
+    class LinkInfo
     {
+    public:
         CX::S32 n_link;
-        CX::aligned_vector<CX::S32> link;
-        CX::aligned_vector<CX::F64> weight;
-        CX::aligned_vector<CX::F64> Kplus;
+        /* CX::aligned_vector<CX::S32> link;
+        CX::aligned_vector<CX::F32> weight;
+        CX::aligned_vector<CX::F32> Kplus; */
+        CX::S32 *link;
+        CX::F32 *weight;
+        CX::F32 *Kplus;
         void init(const CX::S32 num)
         {
             this->n_link = num;
-            link.resize(num);
+            /* link.resize(num);
             weight.resize(num);
-            Kplus.resize(num);
+            Kplus.resize(num); */
+            link = new CX::S32[num];
+            weight = new CX::F32[num];
+            Kplus = new CX::F32[num];
             for (CX::S32 i = 0; i < num; i++)
             {
                 link[i] = 0;
@@ -63,6 +70,12 @@ public:
         }
         void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
         void setWeight(const CX::S32 id, const CX::F64 value) { this->weight[id] = value; }
+        ~LinkInfo()
+        {
+            delete[] link;
+            delete[] weight;
+            delete[] Kplus;
+        };
     };
     struct Post
     {

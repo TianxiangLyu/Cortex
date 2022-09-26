@@ -23,7 +23,7 @@ ifeq ($(PLATFORM_SPECIFICATION),LINUX_INTEL)
 CC = icpc
 CFLAGS += -std=c++11 -Ofast -ffast-math -funroll-loops
 CFLAGS += -DCORTEX_TWO_DIMENSION
-CFLAGS += -DCORTEX_MPI_PARALLEL
+CFLAGS += -DCORTEX_MPI_PARALLEL -parallel-source-info=2
 CFLAGS += -xSKYLAKE-AVX512 -qopenmp-simd -qopt-zmm-usage=high -qopt-report=5
 #CFLAGS += -lasan -fsanitize=address
 endif
@@ -61,8 +61,11 @@ clean:
 distclean: clean
 	rm -rf result
 
+aps:
+	mpirun -hostfile mfile aps ./hpc_bencmark.out -z 360 -p 0 -s 500
+
 run:
-	mpirun -hostfile mfile ./cn.out
+	mpirun -hostfile mfile ./hpc_bencmark.out -z 360 -p 0 -s 500
 
 survey:
 	rm -rf adv_result/
