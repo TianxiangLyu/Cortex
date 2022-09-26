@@ -5,11 +5,6 @@ PLATFORM_SPECIFICATION = LINUX_INTEL
 INC_PATH += -I ../src/
 INC_PATH += -I ../template/
 
-MPI_PATH = /GPUFS/sysu_hpcedu_302/admin/env/v5/spack/opt/spack/linux-centos7-skylake_avx512/gcc-8.5.0/intel-oneapi-mpi-2021.4.0-qborc7gfu7mck3e7mordbyxwaxo5epbb/mpi/2021.4.0
-INC_PATH += -I $(MPI_PATH)/include
-LIBS += -L $(MPI_PATH)/lib
-LIBS += -lmpi
-
 ifeq ($(USE_GSL),yes)
 CFLAGS += -DUSE_GSL
 GSL_PATH = /GPUFS/sysu_hpcedu_302/lvtx/tools/gsl/2.7-oneapi-2021
@@ -20,7 +15,7 @@ LIBS += -lgsl
 endif
 
 ifeq ($(PLATFORM_SPECIFICATION),LINUX_INTEL)
-CC = icpc
+CC = mpiicpc
 CFLAGS += -std=c++11 -Ofast -ffast-math -funroll-loops
 CFLAGS += -DCORTEX_TWO_DIMENSION
 CFLAGS += -DCORTEX_MPI_PARALLEL -parallel-source-info=2
@@ -62,10 +57,10 @@ distclean: clean
 	rm -rf result
 
 aps:
-	mpirun -hostfile mfile aps ./hpc_bencmark.out -z 360 -p 0 -s 500
+	mpirun -hostfile mfile aps ./hpc_bencmark.out -z 400 -p 0 -s 500
 
 run:
-	mpirun -hostfile mfile ./hpc_bencmark.out -z 360 -p 0 -s 500
+	mpirun -hostfile mfile ./hpc_bencmark.out -z 100 -p 0 -s 500
 
 survey:
 	rm -rf adv_result/

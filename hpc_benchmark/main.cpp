@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cortex.hpp>
-#include <neuron/iaf_psc_alpha.hpp>
+#include <neuron/iaf_psc_alpha_null_pos.hpp>
 #include <synapse/stdp_pl_synapse_hom.hpp>
 #include <synapse/syn_static.hpp>
 #include <synapse/syn_static_hom.hpp>
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
     typedef stdp_pl_synapse_hom<stdp_params> stdp;
-    typedef iaf_psc_alpha<model_params> iaf_psc;
+    typedef iaf_psc_alpha_null_pos<model_params> iaf_psc;
     typedef syn_static_hom<syn_params> syn;
 
     CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NE), world_group);
@@ -155,8 +155,10 @@ int main(int argc, char *argv[])
 
     L1e_to_L1e.SetIndegreeMultapses(CE);
     L1e_to_L1i.SetIndegreeMultapsesAutapses(CE);
+    L1e.freeSpkAll();
     L1i_to_L1e.SetIndegreeMultapsesAutapses(CI);
     L1i_to_L1i.SetIndegreeMultapses(CI);
+    L1i.freeSpkAll();
 
     L1e_to_L1e.SetWeightAll(JE_pA);
     L1e_to_L1i.SetWeightAll(JE_pA);

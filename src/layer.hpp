@@ -36,7 +36,6 @@ namespace Cortex
         ~LayerInfo(){};
         LayerInfo(const LayerInfo &);
         Tneu &operator[](const int i) { return neuron_[i]; }
-        const std::vector<Tspk> &geTneuall() const { return spk_tot_; }
         template <class Tfunc_init>
         LayerInfo(const std::string layer_name,
                   const BOUNDARY_CONDITION bc,
@@ -55,8 +54,14 @@ namespace Cortex
             dinfo_.setPosRootDomain(pos_root_domain.low_, pos_root_domain.high_); // useless for BOUNDARY_OPEN
             dinfo_.decomposeDomainAll(neuron_);
             neuron_.exchangeParticle(dinfo_);
+            std::random_device rd;
+            std::default_random_engine eng{rd()};
+            std::uniform_int_distribution<S32> distr(1, 4 * neuron_.getNumberOfParticleGlobal());
             for (S32 i = 0; i < neuron_.getNumberOfParticleLocal(); i++)
-                neuron_[i].init(rand());
+            {
+                const S32 rand_seed = distr(eng);
+                neuron_[i].init(rand_seed);
+            }
             dst_dinfo_.setSrcInfo(dinfo_);
             initWorld();
         };
@@ -79,8 +84,14 @@ namespace Cortex
             dinfo_.setPosRootDomain(pos_root_domain.low_, pos_root_domain.high_); // useless for BOUNDARY_OPEN
             dinfo_.decomposeDomainAll(neuron_);
             neuron_.exchangeParticle(dinfo_); // set comm_info_;
+            std::random_device rd;
+            std::default_random_engine eng{rd()};
+            std::uniform_int_distribution<S32> distr(1, 4 * neuron_.getNumberOfParticleGlobal());
             for (S32 i = 0; i < neuron_.getNumberOfParticleLocal(); i++)
-                neuron_[i].init(rand());
+            {
+                const S32 rand_seed = distr(eng);
+                neuron_[i].init(rand_seed);
+            }
             dst_dinfo_.setSrcInfo(dinfo_);
             initWorld();
         };
@@ -102,6 +113,14 @@ namespace Cortex
                 std::cerr << "Layer name " << layer_name << " has been existed " << std::endl;
                 std::cerr << "Exist ID " << search->second << " this ID " << getLayerID() << std::endl;
                 Abort(-1);
+            }
+        }
+        void freeSpkAll()
+        {
+            if(spk_tot_.size() > 0)
+            {
+                spk_tot_.clear();
+                spk_tot_.shrink_to_fit();
             }
         }
         void Update(const F64 time)

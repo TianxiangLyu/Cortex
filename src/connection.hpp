@@ -191,7 +191,7 @@ namespace Cortex
             if (epi_org_.size() == 0)
                 return;
             const S32 n_epj = epj_link_.size();
-            assert(n_epj == spk_tot_.size());
+            //assert(n_epj == spk_tot_.size());
             for (S32 j = 0; j < n_epj; j++)
                 for (S32 i = 0; i < epj_link_[j].n_link; i++)
                     epj_link_[j].setWeight(i, weight);
