@@ -34,6 +34,7 @@ CC = g++
 CFLAGS += -std=c++20 -Ofast -ffast-math -funroll-loops -gdwarf-4
 CFLAGS += -DCORTEX_TWO_DIMENSION
 CFLAGS += -DCORTEX_MPI_PARALLEL
+CFLAGS += -DCORTEX_THRED_PARALLEL -fopenmp
 #CFLAGS += -lasan -fsanitize=address
 endif
 

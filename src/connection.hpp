@@ -91,6 +91,14 @@ namespace Cortex
             if (epi_org_.size() == 0)
                 return;
         }
+        void SetIndegreeMultapsesOMP(const S32 indegree)
+        {
+            if (epi_org_.size() == 0)
+                return;
+            const S32 n_epi = epi_org_.size();
+            const S32 n_epj = epj_link_.size();
+            assert(n_epj == spk_tot_.size());
+        }
         void SetIndegreeMultapses(const S32 indegree)
         {
             if (epi_org_.size() == 0)
