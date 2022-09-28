@@ -11,12 +11,10 @@ public:
     {
     public:
         CX::S32 n_link;
-        /* CX::aligned_vector<CX::S32> link; */
         CX::S32 *link;
         void init(const CX::S32 num)
         {
             this->n_link = num;
-            /* link.resize(num); */
             link = new CX::S32[num];
         }
         void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }

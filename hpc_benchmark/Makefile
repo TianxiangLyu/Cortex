@@ -6,11 +6,6 @@ INC_PATH += -I ../src/
 INC_PATH += -I ../template/
 #INC_PATH += -I /GPUFS/sysu_hpcedu_302/admin/env/v5/spack/opt/spack/linux-centos7-skylake_avx512/gcc-8.5.0/intel-oneapi-compilers-2021.4.0-xelpe64yiophx5bpmbcraczuqjpilnb3/compiler/2021.4.0/linux/compiler/include/
 
-MPI_PATH = /GPUFS/sysu_hpcedu_302/admin/env/v5/spack/opt/spack/linux-centos7-skylake_avx512/oneapi-2021.4.0/intel-oneapi-mpi-2021.4.0-bijqjtufrg3kcwbfb4noxj6lm6ngv5u4/mpi/2021.4.0
-INC_PATH += -I $(MPI_PATH)/include
-LIBS += -L $(MPI_PATH)/lib
-LIBS += -lmpi
-
 ifeq ($(USE_GSL),yes)
 CFLAGS += -DUSE_GSL
 GSL_PATH = /GPUFS/sysu_hpcedu_302/lvtx/tools/gsl/2.7-oneapi-2021
@@ -30,11 +25,11 @@ CFLAGS += -xSKYLAKE-AVX512 -qopenmp-simd
 endif
 
 ifeq ($(PLATFORM_SPECIFICATION),LINUX_GNU)
-CC = g++
+CC = mpicxx
 CFLAGS += -std=c++20 -Ofast -ffast-math -funroll-loops -gdwarf-4
 CFLAGS += -DCORTEX_TWO_DIMENSION
 CFLAGS += -DCORTEX_MPI_PARALLEL
-CFLAGS += -DCORTEX_THRED_PARALLEL -fopenmp
+CFLAGS += -DCORTEX_THREAD_PARALLEL -fopenmp
 #CFLAGS += -lasan -fsanitize=address
 endif
 

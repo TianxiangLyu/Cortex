@@ -10,16 +10,21 @@ public:
     struct LinkInfo
     {
         CX::S32 n_link;
-        CX::aligned_vector<CX::S32> link;
-        CX::aligned_vector<CX::F64> weight;
+        CX::S32 *link;
+        CX::F32 *weight;
         void init(const CX::S32 num)
         {
             this->n_link = num;
-            link.resize(num);
-            weight.resize(num);
+            link = new CX::S32[num];
+            weight = new CX::F32[num];
         }
         void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
         void setWeight(const CX::S32 id, const CX::F64 value) { this->weight[id] = value; }
+        ~LinkInfo()
+        {
+            delete[] link;
+            delete[] weight;
+        }
     };
     struct Post
     {

@@ -2,6 +2,7 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
+#include <unordered_map>
 namespace CX = Cortex;
 template <class params> // Add InputChannel?
 class stdp_pl_synapse_hom
@@ -42,40 +43,34 @@ public:
     constexpr static const CX::F64 tau_minus_inv = 1.0 / params::tau_minus;
     constexpr static const CX::F64 tau_minus_triplet = 110.0;
     constexpr static const CX::F64 tau_minus_triplet_inv = 1.0 / tau_minus_triplet;
+    class Link
+    {
+    public:
+        CX::S32 link;
+        CX::F32 weight;
+        CX::F32 Kplus;
+        Link(){};
+        Link(const CX::S32 _link, const CX::F64 _weight, const CX::F64 _Kplus)
+            : link(_link),
+              weight(_weight),
+              Kplus(_Kplus){};
+    };
     class LinkInfo
     {
     public:
         CX::S32 n_link;
-        /* CX::aligned_vector<CX::S32> link;
-        CX::aligned_vector<CX::F32> weight;
-        CX::aligned_vector<CX::F32> Kplus; */
-        CX::S32 *link;
-        CX::F32 *weight;
-        CX::F32 *Kplus;
+        Link *info;
         void init(const CX::S32 num)
         {
             this->n_link = num;
-            /* link.resize(num);
-            weight.resize(num);
-            Kplus.resize(num); */
-            link = new CX::S32[num];
-            weight = new CX::F32[num];
-            Kplus = new CX::F32[num];
-            for (CX::S32 i = 0; i < num; i++)
-            {
-                link[i] = 0;
-                weight[i] = 1;
-                Kplus[i] = 0;
-            }
+            info = new Link[num];
         }
-        void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
-        void setWeight(const CX::S32 id, const CX::F64 value) { this->weight[id] = value; }
+        void setLink(const CX::S32 id, const CX::S32 target) { this->info[id].link = target; }
+        void setWeight(const CX::S32 id, const CX::F64 value) { this->info[id].weight = value; }
         ~LinkInfo()
         {
-            delete[] link;
-            delete[] weight;
-            delete[] Kplus;
-        };
+            delete[] info;
+        }
     };
     struct Post
     {
@@ -85,7 +80,7 @@ public:
         const CX::F64 Rsearch;
         // for STDP
         CX::F64 lastSpkTime = -1.0;
-        CX::S32 n_link = 0;     // number of incoming connections
+        CX::S32 n_link = 0;   // number of incoming connections
         CX::F64 Kminus = 0.0; // the current time-dependent weighting of the STDP update rule for depression
         CX::F64 Kminus_triplet = 0.0;
         CX::F64 trace = 0;
@@ -232,7 +227,51 @@ public:
             {
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {
-                    const CX::S32 adr = ep_j[j].link.link[i];
+                    const CX::S32 adr = ep_j[j].link.info[i].link;
+                    const CX::F64 drtc_delay = delay;
+                    const CX::F64 currSpkTime = ep_j[j].currSpkTime;
+                    const CX::F64 lastSpkTime = ep_j[j].lastSpkTime;
+                    const stdp_pl_synapse_hom::spike_interval spk_his = ep_i[adr].getHistory(lastSpkTime - drtc_delay, currSpkTime - drtc_delay);
+                    for (typename CX::aligned_deque<histentry>::iterator it = spk_his.start; it != spk_his.end; it++)
+                    {
+                        const CX::F64 minus_dt = lastSpkTime - (it->SpkTime + drtc_delay);
+                        // assert(minus_dt < 0 - stdp_eps);
+                        ep_j[j].link.info[i].weight = facilitate(ep_j[j].link.info[i].weight, ep_j[j].link.info[i].Kplus * std::exp(minus_dt * tau_plus_inv));
+                    }
+                    ep_j[j].link.info[i].weight = depress(ep_j[j].link.info[i].weight, ep_i[adr].getKvalue(time - drtc_delay));
+                    ep_j[j].link.info[i].Kplus = ep_j[j].link.info[i].Kplus * std::exp((lastSpkTime - time) * tau_plus_inv) + 1.0;
+                    ep_i[adr].input += ep_j[j].link.info[i].weight;
+                }
+            }
+        }
+    };
+    class TestInteraction
+    {
+    private:
+        const CX::F64 time;
+        inline CX::F64 facilitate(CX::F64 w, CX::F64 kplus)
+        {
+            return w + (params::lambda * std::pow(w, params::mu) * kplus);
+        }
+        inline CX::F64 depress(CX::F64 w, CX::F64 kminus)
+        {
+            CX::F64 new_w = w - (params::lambda * params::alpha * w * kminus);
+            return new_w > 0.0 ? new_w : 0.0;
+        }
+
+    public:
+        TestInteraction(const CX::F64 _time)
+            : time(_time){};
+        void operator()(Post *const ep_i, const CX::S32 Nip,
+                        Synapse *const ep_j, const CX::S32 Njp)
+        {
+            std::unordered_map<CX::S32, Link> link_map;
+
+            for (CX::S32 j = 0; j < Njp; j++)
+            {
+                for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
+                {
+                    const CX::S32 adr = ep_j[j].link.info[i].link;
                     const CX::F64 drtc_delay = delay;
                     const CX::F64 currSpkTime = ep_j[j].currSpkTime;
                     const CX::F64 lastSpkTime = ep_j[j].lastSpkTime;
@@ -241,11 +280,11 @@ public:
                     {
                         const CX::F64 minus_dt = lastSpkTime - (it->SpkTime + drtc_delay);
                         // assert(minus_dt < 0 - stdp_eps);
-                        ep_j[j].link.weight[i] = facilitate(ep_j[j].link.weight[i], ep_j[j].link.Kplus[i] * std::exp(minus_dt * tau_plus_inv));
+                        ep_j[j].link.info[i].weight = facilitate(ep_j[j].link.info[i].weight, ep_j[j].link.info[i].Kplus * std::exp(minus_dt * tau_plus_inv));
                     }
-                    ep_j[j].link.weight[i] = depress(ep_j[j].link.weight[i], ep_i[adr].getKvalue(time - drtc_delay));
-                    ep_j[j].link.Kplus[i] = ep_j[j].link.Kplus[i] * std::exp((lastSpkTime - time) * tau_plus_inv) + 1.0;
-                    ep_i[adr].input += ep_j[j].link.weight[i];
+                    ep_j[j].link.info[i].weight = depress(ep_j[j].link.info[i].weight, ep_i[adr].getKvalue(time - drtc_delay));
+                    ep_j[j].link.info[i].Kplus = ep_j[j].link.info[i].Kplus * std::exp((lastSpkTime - time) * tau_plus_inv) + 1.0;
+                    ep_i[adr].input += ep_j[j].link.info[i].weight;
                 }
             }
         }

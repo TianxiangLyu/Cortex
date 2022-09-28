@@ -117,8 +117,6 @@ int main(int argc, char *argv[])
             CX::Abort();
         }
     }
-
-    CX::F64 init_offset = CX::GetWtime();
     CX::F64 dt = params::dt;
     CX::F64 end_time = presimtime + simtime; // length means the distance from center to the boundary
     const CX::S32 NE = brunel_params::NE * scale;
@@ -141,8 +139,8 @@ int main(int argc, char *argv[])
     MPI_Group world_group;
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
-    typedef stdp_pl_synapse_hom<stdp_params> stdp;
     typedef iaf_psc_alpha_null_pos<model_params> iaf_psc;
+    typedef stdp_pl_synapse_hom<stdp_params> stdp;
     typedef syn_static_hom<syn_params> syn;
 
     CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NE), world_group);
@@ -153,20 +151,26 @@ int main(int argc, char *argv[])
     CX::Connection<iaf_psc, syn, iaf_psc> L1e_to_L1i(L1e, L1i, iaf_psc::Channel::EXC);
     CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1i(L1i, L1i, iaf_psc::Channel::INH);
 
-    L1e_to_L1e.SetIndegreeMultapses(CE);
-    L1e_to_L1i.SetIndegreeMultapsesAutapses(CE);
+    CX::Comm::barrier();
+    const CX::F64 init_offset = CX::GetWtime();
+    L1e_to_L1e.SetIndegreeMultapsesOMP(CE);
+    L1e_to_L1i.SetIndegreeMultapsesAutapsesOMP(CE);
     L1e.freeSpkAll();
-    L1i_to_L1e.SetIndegreeMultapsesAutapses(CI);
-    L1i_to_L1i.SetIndegreeMultapses(CI);
+    L1i_to_L1e.SetIndegreeMultapsesAutapsesOMP(CI);
+    L1i_to_L1i.SetIndegreeMultapsesOMP(CI);
     L1i.freeSpkAll();
 
-    L1e_to_L1e.SetWeightAll(JE_pA);
-    L1e_to_L1i.SetWeightAll(JE_pA);
-    L1i_to_L1e.SetWeightAll(brunel_params::g * JE_pA);
-    L1i_to_L1i.SetWeightAll(brunel_params::g * JE_pA);
+    L1e_to_L1e.SetWeightAllOMP(JE_pA);
+    L1e_to_L1i.SetWeightAllOMP(JE_pA);
+    L1i_to_L1e.SetWeightAllOMP(brunel_params::g * JE_pA);
+    L1i_to_L1i.SetWeightAllOMP(brunel_params::g * JE_pA);
 
     CX::Comm::barrier();
-    L1e.initRMA();
+    if(CX::Comm::getRank() == 0)
+        std::cout<< "init time "<< CX::GetWtime() - init_offset << std::endl;
+
+    CX::Comm::barrier();
+    L1e.initRMA();//test
     L1i.initRMA();
 
     std::random_device rd;

@@ -56,7 +56,7 @@ namespace Cortex
             epj_act_.clear();
             if (slot != queue_.rend())
             {
-                assert(slot->sync);// synchronized
+                assert(slot->sync); // synchronized
                 const S32 n_spk = slot->epj_recv_.size();
                 epj_act_.reserve(n_spk);
                 for (S32 j = 0; j < n_spk; j++)
@@ -80,8 +80,11 @@ namespace Cortex
             if (epi_org_.size() == 0)
                 return;
             setEPJAct(time);
-            for(S32 i = 0; i < dst_neuron_.getNumberOfParticleLocal(); i++)
-                if(dst_neuron_[i].spike)
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
+            for (S32 i = 0; i < dst_neuron_.getNumberOfParticleLocal(); i++)
+                if (dst_neuron_[i].spike)
                     epi_org_[i].updateSpk(time);
             pfunc_ep_ep(epi_org_.data(), epi_org_.size(),
                         epj_act_.data(), epj_act_.size());
@@ -95,111 +98,287 @@ namespace Cortex
         {
             if (epi_org_.size() == 0)
                 return;
+            const S32 n_threads = Comm::getNumberOfThread();
             const S32 n_epi = epi_org_.size();
             const S32 n_epj = epj_link_.size();
             assert(n_epj == spk_tot_.size());
-        }
-        void SetIndegreeMultapses(const S32 indegree)
-        {
-            if (epi_org_.size() == 0)
-                return;
-            const S32 n_epi = epi_org_.size();
-            const S32 n_epj = epj_link_.size();
-            assert(n_epj == spk_tot_.size());
-            std::vector<S32> link_set(indegree);
-            std::vector<S32> adr(n_epi);
             std::vector<S32> link_num(n_epj);
             std::vector<S32> ptr(n_epj);
-            std::fill(adr.begin(), adr.end(), -1);
+            std::vector<S32> ptr_check(n_epj);
             std::fill(link_num.begin(), link_num.end(), 0);
             std::fill(ptr.begin(), ptr.end(), 0);
-            for (S32 i = 0; i < n_epi; i++)
+            std::fill(ptr_check.begin(), ptr_check.end(), 0);
+#ifdef CORTEX_THREAD_PARALLEL
+            std::vector<omp_lock_t> lock(n_epj);
+            for (S32 j = 0; j < n_epj; j++)
+                omp_init_lock(&(lock[j]));
+#endif
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel
+#endif
             {
-                for (S32 j = 0; j < n_epj; j++)
+                const S32 ith = Comm::getThreadNum();
+                std::vector<S32> link_num_ith(n_epj);
+                std::uniform_int_distribution<S32> distr(0, n_epj - 1);
+                std::default_random_engine test(epi_org_[0].randSeed);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 i = 0; i < n_epi; i++)
                 {
-                    if (spk_tot_[j].id == epi_org_[i].id && adr[i] == -1)
-                        adr[i] = j;
-                    else if (spk_tot_[j].id == epi_org_[i].id && adr[i] != -1)
+                    std::default_random_engine eng(epi_org_[i].randSeed);
+                    for (S32 j = 0; j < indegree; j++)
                     {
-                        std::cerr << "same id in spk_tot_[j]" << adr[i] << " " << j << " " << spk_tot_[j].id << std::endl;
-                        Abort(-1);
+                        S32 adr = distr(eng);
+                        while (spk_tot_[adr].id == epi_org_[i].id)
+                            adr = distr(eng);
+                        assert(spk_tot_[adr].id != epi_org_[i].id);
+                        link_num_ith[adr]++;
                     }
                 }
-                assert(epi_org_[i].randSeed != 0);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp critical
+#endif
+                for (S32 j = 0; j < n_epj; j++)
+                    link_num[j] += link_num_ith[j];
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp barrier //important
+#endif
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 j = 0; j < n_epj; j++)
+                    epj_link_[j].init(link_num[j]);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 i = 0; i < n_epi; i++)
+                {
+                    std::default_random_engine eng(epi_org_[i].randSeed);
+                    for (S32 j = 0; j < indegree; j++)
+                    {
+                        S32 adr = distr(eng);
+                        while (spk_tot_[adr].id == epi_org_[i].id)
+                            adr = distr(eng);
+                        assert(adr >= 0 && adr < n_epj);
+                        assert(spk_tot_[adr].id != epi_org_[i].id);
+#ifdef CORTEX_THREAD_PARALLEL
+                        omp_set_lock(&(lock[adr]));
+#endif
+                        epj_link_[adr].setLink(ptr[adr], i);
+                        ptr[adr]++;
+#ifdef CORTEX_THREAD_PARALLEL
+                        omp_unset_lock(&(lock[adr]));
+#endif
+                    }
+                }
+            } // end omp
+            /* for (S32 j = 0; j < n_epj; j++)
+                omp_destroy_lock(&(lock[j]));
+            for (S32 j = 0; j < n_epj; j++)
+                assert(ptr[j] == link_num[j]);
+            std::vector<S32> link_num_check(n_epj);
+            std::vector<typename Tsyn::LinkInfo> epj_link_check(n_epj);
+            std::uniform_int_distribution<S32> distr(0, n_epj - 1);
+            for (S32 i = 0; i < n_epi; i++)
+            {
                 std::default_random_engine eng(epi_org_[i].randSeed);
-                std::uniform_int_distribution<S32> distr(0, n_epj - 1);
                 for (S32 j = 0; j < indegree; j++)
                 {
-                    link_set[j] = distr(eng);
-                    while (link_set[j] == adr[i])
-                        link_set[j] = distr(eng);
-                    assert(spk_tot_[link_set[j]].id != epi_org_[i].id);
-                    link_num[link_set[j]]++;
+                    S32 adr = distr(eng);
+                    while (spk_tot_[adr].id == epi_org_[i].id)
+                        adr = distr(eng);
+                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    link_num_check[adr]++;
                 }
             }
             for (S32 j = 0; j < n_epj; j++)
-                epj_link_[j].init(link_num[j]);
+                epj_link_check[j].init(link_num[j]);
             for (S32 i = 0; i < n_epi; i++)
             {
-                assert(epi_org_[i].randSeed != 0);
                 std::default_random_engine eng(epi_org_[i].randSeed);
-                std::uniform_int_distribution<S32> distr(0, n_epj - 1);
                 for (S32 j = 0; j < indegree; j++)
                 {
-                    link_set[j] = distr(eng);
-                    while (link_set[j] == adr[i])
-                        link_set[j] = distr(eng);
-                    assert(spk_tot_[link_set[j]].id != epi_org_[i].id);
-                    epj_link_[link_set[j]].setLink(ptr[link_set[j]], i);
-                    ptr[link_set[j]]++;
+                    S32 adr = distr(eng);
+                    while (spk_tot_[adr].id == epi_org_[i].id)
+                        adr = distr(eng);
+                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    if (ptr_check[adr] >= epj_link_check[adr].n_link)
+                    {
+                        std::cout << adr << " " << ptr_check[adr] << " " << epj_link_check[adr].n_link << std::endl;
+                        Abort(-1);
+                    }
+                    epj_link_check[adr].setLink(ptr_check[adr], i);
+                    ptr_check[adr]++;
                 }
-                epi_org_[i].n_link = indegree;
             }
+            for (S32 j = 0; j < n_epj; j++)
+            {
+                if (link_num[j] != link_num_check[j])
+                {
+                    std::cout << "j " << j << " link_num[j] " << link_num[j] << " link_num_check[j] " << link_num_check[j] << std::endl;
+                    Abort(-1);
+                }
+                if (ptr[j] != ptr_check[j])
+                {
+                    std::cout << "j " << j << " ptr[j] " << ptr[j] << " ptr_check[j] " << ptr_check[j] << std::endl;
+                    Abort(-1);
+                }
+                if (epj_link_[j].n_link != epj_link_check[j].n_link)
+                {
+                    std::cout << "j " << j << " epj_link[j].n_link " << epj_link_[j].n_link << " epj_link_check[j].n_link " << epj_link_check[j].n_link << std::endl;
+                    Abort(-1);
+                }
+            } */
         }
-        void SetIndegreeMultapsesAutapses(const S32 indegree)
+        void SetIndegreeMultapsesAutapsesOMP(const S32 indegree)
         {
             if (epi_org_.size() == 0)
                 return;
+            const S32 n_threads = Comm::getNumberOfThread();
             const S32 n_epi = epi_org_.size();
             const S32 n_epj = epj_link_.size();
             assert(n_epj == spk_tot_.size());
-            std::vector<S32> link_set(indegree);
             std::vector<S32> link_num(n_epj);
             std::vector<S32> ptr(n_epj);
+            std::vector<S32> ptr_check(n_epj);
             std::fill(link_num.begin(), link_num.end(), 0);
             std::fill(ptr.begin(), ptr.end(), 0);
+            std::fill(ptr_check.begin(), ptr_check.end(), 0);
+#ifdef CORTEX_THREAD_PARALLEL
+            std::vector<omp_lock_t> lock(n_epj);
+            for (S32 j = 0; j < n_epj; j++)
+                omp_init_lock(&(lock[j]));
+#endif
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel
+#endif
+            {
+                const S32 ith = Comm::getThreadNum();
+                std::vector<S32> link_num_ith(n_epj);
+                std::uniform_int_distribution<S32> distr(0, n_epj - 1);
+                std::default_random_engine test(epi_org_[0].randSeed);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 i = 0; i < n_epi; i++)
+                {
+                    std::default_random_engine eng(epi_org_[i].randSeed);
+                    for (S32 j = 0; j < indegree; j++)
+                    {
+                        S32 adr = distr(eng);
+                        link_num_ith[adr]++;
+                    }
+                }
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp critical
+#endif
+                for (S32 j = 0; j < n_epj; j++)
+                    link_num[j] += link_num_ith[j];
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp barrier //important
+#endif
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 j = 0; j < n_epj; j++)
+                    epj_link_[j].init(link_num[j]);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 i = 0; i < n_epi; i++)
+                {
+                    std::default_random_engine eng(epi_org_[i].randSeed);
+                    for (S32 j = 0; j < indegree; j++)
+                    {
+                        S32 adr = distr(eng);
+#ifdef CORTEX_THREAD_PARALLEL
+                        omp_set_lock(&(lock[adr]));
+#endif
+                        epj_link_[adr].setLink(ptr[adr], i);
+                        ptr[adr]++;
+#ifdef CORTEX_THREAD_PARALLEL
+                        omp_unset_lock(&(lock[adr]));
+#endif
+                    }
+                }
+            } // end omp
+            /* for (S32 j = 0; j < n_epj; j++)
+                omp_destroy_lock(&(lock[j]));
+            for (S32 j = 0; j < n_epj; j++)
+                assert(ptr[j] == link_num[j]);
+            std::vector<S32> link_num_check(n_epj);
+            std::vector<typename Tsyn::LinkInfo> epj_link_check(n_epj);
+            std::uniform_int_distribution<S32> distr(0, n_epj - 1);
             for (S32 i = 0; i < n_epi; i++)
             {
-                assert(epi_org_[i].randSeed != 0);
                 std::default_random_engine eng(epi_org_[i].randSeed);
-                std::uniform_int_distribution<S32> distr(0, n_epj - 1);
                 for (S32 j = 0; j < indegree; j++)
                 {
-                    link_set[j] = distr(eng);
-                    link_num[link_set[j]]++;
+                    S32 adr = distr(eng);
+                    while (spk_tot_[adr].id == epi_org_[i].id)
+                        adr = distr(eng);
+                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    link_num_check[adr]++;
                 }
             }
             for (S32 j = 0; j < n_epj; j++)
-                epj_link_[j].init(link_num[j]);
+                epj_link_check[j].init(link_num[j]);
             for (S32 i = 0; i < n_epi; i++)
             {
-                assert(epi_org_[i].randSeed != 0);
                 std::default_random_engine eng(epi_org_[i].randSeed);
-                std::uniform_int_distribution<S32> distr(0, n_epj - 1);
                 for (S32 j = 0; j < indegree; j++)
                 {
-                    link_set[j] = distr(eng);
-                    epj_link_[link_set[j]].setLink(ptr[link_set[j]], i);
-                    ptr[link_set[j]]++;
+                    S32 adr = distr(eng);
+                    while (spk_tot_[adr].id == epi_org_[i].id)
+                        adr = distr(eng);
+                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    if (ptr_check[adr] >= epj_link_check[adr].n_link)
+                    {
+                        std::cout << adr << " " << ptr_check[adr] << " " << epj_link_check[adr].n_link << std::endl;
+                        Abort(-1);
+                    }
+                    epj_link_check[adr].setLink(ptr_check[adr], i);
+                    ptr_check[adr]++;
                 }
             }
+            for (S32 j = 0; j < n_epj; j++)
+            {
+                if (link_num[j] != link_num_check[j])
+                {
+                    std::cout << "j " << j << " link_num[j] " << link_num[j] << " link_num_check[j] " << link_num_check[j] << std::endl;
+                    Abort(-1);
+                }
+                if (ptr[j] != ptr_check[j])
+                {
+                    std::cout << "j " << j << " ptr[j] " << ptr[j] << " ptr_check[j] " << ptr_check[j] << std::endl;
+                    Abort(-1);
+                }
+                if (epj_link_[j].n_link != epj_link_check[j].n_link)
+                {
+                    std::cout << "j " << j << " epj_link[j].n_link " << epj_link_[j].n_link << " epj_link_check[j].n_link " << epj_link_check[j].n_link << std::endl;
+                    Abort(-1);
+                }
+            } */
         }
         void SetWeightAll(const CX::F64 weight)
         {
             if (epi_org_.size() == 0)
                 return;
             const S32 n_epj = epj_link_.size();
-            //assert(n_epj == spk_tot_.size());
+            // assert(n_epj == spk_tot_.size());
+            for (S32 j = 0; j < n_epj; j++)
+                for (S32 i = 0; i < epj_link_[j].n_link; i++)
+                    epj_link_[j].setWeight(i, weight);
+        }
+        void SetWeightAllOMP(const CX::F64 weight)
+        {
+            if (epi_org_.size() == 0)
+                return;
+            const S32 n_epj = epj_link_.size();
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
             for (S32 j = 0; j < n_epj; j++)
                 for (S32 i = 0; i < epj_link_[j].n_link; i++)
                     epj_link_[j].setWeight(i, weight);
