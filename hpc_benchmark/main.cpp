@@ -207,6 +207,8 @@ int main(int argc, char *argv[])
         L1i.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
     }
     const CX::F64 pre_sim_time = CX::GetWtime() - time_offset;
+    if (CX::Comm::getRank() == 0)
+        std::cout << "pre-sim time: " << pre_sim_time << std::endl;
     for (CX::F64 time = presimtime; time < presimtime + simtime; time += dt, step++)
     {
         L1e.Update(time);
@@ -238,8 +240,7 @@ int main(int argc, char *argv[])
     L1e.freeRMA();
     L1i.freeRMA();
     if (CX::Comm::getRank() == 0)
-        std::cout << "pre-sim time: " << pre_sim_time << std::endl
-                  << "sim time: " << sim_time << std::endl;
+        std::cout << "sim time: " << sim_time << std::endl;
     CX::S32 exc_spk_count = 0;
     CX::S32 inh_spk_count = 0;
     for (CX::S32 i = 0; i < L1e.getNumLocal(); i++)

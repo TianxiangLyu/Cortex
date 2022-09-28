@@ -3,6 +3,7 @@
 #include <mutex>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 namespace CX = Cortex;
 template <class params> // Add InputChannel?
 class stdp_pl_synapse_hom
@@ -43,21 +44,23 @@ public:
     constexpr static const CX::F64 tau_minus_inv = 1.0 / params::tau_minus;
     constexpr static const CX::F64 tau_minus_triplet = 110.0;
     constexpr static const CX::F64 tau_minus_triplet_inv = 1.0 / tau_minus_triplet;
-    class Link
+    struct Link
     {
-    public:
-        CX::S32 link;
+        CX::S32 target;
         CX::F32 weight;
         CX::F32 Kplus;
         Link(){};
-        Link(const CX::S32 _link, const CX::F64 _weight, const CX::F64 _Kplus)
-            : link(_link),
+        Link(const CX::S32 _target, const CX::F64 _weight, const CX::F64 _Kplus)
+            : target(_target),
               weight(_weight),
               Kplus(_Kplus){};
+        Link(const CX::S32 _target, const Link &_link)
+            : target(_target),
+              weight(_link.weight),
+              Kplus(_link.Kplus){};
     };
-    class LinkInfo
+    struct LinkInfo
     {
-    public:
         CX::S32 n_link;
         Link *info;
         void init(const CX::S32 num)
@@ -65,7 +68,7 @@ public:
             this->n_link = num;
             info = new Link[num];
         }
-        void setLink(const CX::S32 id, const CX::S32 target) { this->info[id].link = target; }
+        void setLink(const CX::S32 id, const CX::S32 target) { this->info[id].target = target; }
         void setWeight(const CX::S32 id, const CX::F64 value) { this->info[id].weight = value; }
         ~LinkInfo()
         {
@@ -98,14 +101,14 @@ public:
               Kminus_triplet(0.0),
               trace(0.0),
               input(_input){};
-        template <class Tep>
+/*         template <class Tep>
         void setFromEP(const Tep &ep)
         {
             this->id = ep.id;
             this->pos = ep.pos;
             this->randSeed = ep.randSeed;
             this->Rsearch = ep.Rsearch;
-        }
+        } */
         void clearHistory()
         {
             this->history.clear();
@@ -223,11 +226,15 @@ public:
         void operator()(Post *const ep_i, const CX::S32 Nip,
                         Synapse *const ep_j, const CX::S32 Njp)
         {
+
             for (CX::S32 j = 0; j < Njp; j++)
             {
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for schedule(auto)
+#endif
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {
-                    const CX::S32 adr = ep_j[j].link.info[i].link;
+                    const CX::S32 adr = ep_j[j].link.info[i].target;
                     const CX::F64 drtc_delay = delay;
                     const CX::F64 currSpkTime = ep_j[j].currSpkTime;
                     const CX::F64 lastSpkTime = ep_j[j].lastSpkTime;
@@ -265,13 +272,34 @@ public:
         void operator()(Post *const ep_i, const CX::S32 Nip,
                         Synapse *const ep_j, const CX::S32 Njp)
         {
-            std::unordered_map<CX::S32, Link> link_map;
-
+            std::vector<CX::S32> epi_adr;
+            std::unordered_set<CX::S32> epi_set;
+            std::unordered_multimap<CX::S32, Link> link_map;
+            for (CX::S32 j = 0; j < Njp; j++)
+                for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
+                {
+                    link_map.insert(std::pair<CX::S32, Link>(ep_j[j].link.info[i].target, Link(j, ep_j[j].link.info[i])));
+                    epi_set.insert(ep_j[j].link.info[i].target);
+                }
+            epi_adr.reserve(epi_set.size());
+            for (auto it = epi_set.begin(); it != epi_set.end(); it++)
+                epi_adr.push_back(*it);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
+            for (CX::S32 i = 0; i < epi_adr.size(); i++)
+            {
+                auto range = link_map.equal_range(epi_adr[i]);
+                for (auto it = range.first; it!=range.second; it++)
+                {
+                    it->second.weight = 0;
+                }
+            }
             for (CX::S32 j = 0; j < Njp; j++)
             {
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {
-                    const CX::S32 adr = ep_j[j].link.info[i].link;
+                    const CX::S32 adr = ep_j[j].link.info[i].target;
                     const CX::F64 drtc_delay = delay;
                     const CX::F64 currSpkTime = ep_j[j].currSpkTime;
                     const CX::F64 lastSpkTime = ep_j[j].lastSpkTime;
