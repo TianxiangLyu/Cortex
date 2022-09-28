@@ -7,23 +7,27 @@ class syn_static_hom
 {
 public:
     constexpr static const CX::F64 delay = params::delay;
-    class LinkInfo
+    struct Link
     {
-    public:
+        CX::S32 target;
+        Link(){};
+        Link(const CX::S32 _target)
+        : target(_target){};
+    };
+    struct LinkInfo
+    {
         CX::S32 n_link;
-        /* CX::aligned_vector<CX::S32> link; */
-        CX::S32 *link;
+        Link *info;
         void init(const CX::S32 num)
         {
             this->n_link = num;
-            /* link.resize(num); */
-            link = new CX::S32[num];
+            info = new Link[num];
         }
-        void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
+        void setLink(const CX::S32 id, const CX::S32 target) { this->info[id].target = target; }
         void setWeight(const CX::S32 id, const CX::F64 value) {}
         ~LinkInfo()
         {
-            delete[] link;
+            delete[] info;
         };
     };
     struct Post
@@ -36,13 +40,21 @@ public:
         CX::F32 t_lastSpike;
         CX::S32 n_link;
         CX::F64 &input;
+#ifdef CORTEX_THREAD_PARALLEL
+        omp_lock_t lock;
+#endif
         template <class Tfp>
         Post(Tfp &fp, CX::F64 &_input)
             : id(fp.id),
               pos(fp.pos),
               randSeed(fp.randSeed),
               Rsearch(fp.Rsearch),
-              input(_input){};
+              input(_input)
+              {
+#ifdef CORTEX_THREAD_PARALLEL
+                omp_init_lock(&lock);
+#endif
+              };
         template <class Tep>
         void setFromEP(const Tep &ep)
         {
@@ -75,9 +87,12 @@ public:
                         Synapse *const ep_j, const CX::S32 Njp)
         {
             for (CX::S32 j = 0; j < Njp; j++)
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for schedule(auto)
+#endif
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {
-                    const CX::S32 adr = ep_j[j].link.link[i];
+                    const CX::S32 adr = ep_j[j].link.info[i].target;
                     ep_i[adr].input += weight;
                 }
         }

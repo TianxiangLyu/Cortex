@@ -1,9 +1,10 @@
-PLATFORM_SPECIFICATION = LINUX_INTEL
-#PLATFORM_SPECIFICATION = LINUX_GNU
+#PLATFORM_SPECIFICATION = LINUX_INTEL
+PLATFORM_SPECIFICATION = LINUX_GNU
 #USE_GSL = yes
 
 INC_PATH += -I ../src/
 INC_PATH += -I ../template/
+#INC_PATH += -I /GPUFS/sysu_hpcedu_302/admin/env/v5/spack/opt/spack/linux-centos7-skylake_avx512/gcc-8.5.0/intel-oneapi-compilers-2021.4.0-xelpe64yiophx5bpmbcraczuqjpilnb3/compiler/2021.4.0/linux/compiler/include/
 
 ifeq ($(USE_GSL),yes)
 CFLAGS += -DUSE_GSL
@@ -15,19 +16,20 @@ LIBS += -lgsl
 endif
 
 ifeq ($(PLATFORM_SPECIFICATION),LINUX_INTEL)
-CC = mpiicpc
+CC = icpx
 CFLAGS += -std=c++11 -Ofast -ffast-math -funroll-loops
 CFLAGS += -DCORTEX_TWO_DIMENSION
-CFLAGS += -DCORTEX_MPI_PARALLEL -parallel-source-info=2
-CFLAGS += -xSKYLAKE-AVX512 -qopenmp-simd -qopt-zmm-usage=high -qopt-report=5
-#CFLAGS += -lasan -fsanitize=address
+CFLAGS += -DCORTEX_MPI_PARALLEL
+CFLAGS += -xSKYLAKE-AVX512 -qopenmp-simd
+#CFLAGS += -lasan -fsanitize=address -parallel-source-info=2  -qopt-zmm-usage=high -qopt-report=5
 endif
 
 ifeq ($(PLATFORM_SPECIFICATION),LINUX_GNU)
-CC = g++
-CFLAGS += -std=c++20 -O3 -ffast-math -funroll-loops -gdwarf-4
+CC = mpicxx
+CFLAGS += -std=c++20 -Ofast -ffast-math -funroll-loops -gdwarf-4
 CFLAGS += -DCORTEX_TWO_DIMENSION
 CFLAGS += -DCORTEX_MPI_PARALLEL
+CFLAGS += -DCORTEX_THREAD_PARALLEL -fopenmp
 #CFLAGS += -lasan -fsanitize=address
 endif
 

@@ -7,19 +7,30 @@ class syn_static
 {
 public:
     constexpr static const CX::F64 delay = params::delay;
+    struct Link
+    {
+        CX::S32 target;
+        CX::F32 weight;
+        Link(){};
+        Link(const CX::S32 _target, const CX::F32 _weight)
+            : target(_target),
+              weight(_weight){};
+    };
     struct LinkInfo
     {
         CX::S32 n_link;
-        CX::aligned_vector<CX::S32> link;
-        CX::aligned_vector<CX::F64> weight;
+        Link *info;
         void init(const CX::S32 num)
         {
             this->n_link = num;
-            link.resize(num);
-            weight.resize(num);
+            info = new CX::S32[num];
         }
-        void setLink(const CX::S32 id, const CX::S32 target) { this->link[id] = target; }
-        void setWeight(const CX::S32 id, const CX::F64 value) { this->weight[id] = value; }
+        void setLink(const CX::S32 id, const CX::S32 target) { this->info[id].target = target; }
+        void setWeight(const CX::S32 id, const CX::F64 value) { this->info[id].weight = value; }
+        ~LinkInfo()
+        {
+            delete[] info;
+        }
     };
     struct Post
     {
@@ -63,9 +74,10 @@ public:
     {
     private:
         const CX::F64 weight;
+
     public:
         CalcInteraction(const CX::F64 _weight)
-        : weight(_weight){};
+            : weight(_weight){};
         void operator()(Post *const ep_i, const CX::S32 Nip,
                         Synapse *const ep_j, const CX::S32 Njp)
         {
@@ -74,11 +86,11 @@ public:
                 {
                     const CX::S32 adr = ep_j[j].link.link[i];
                     ep_i[adr].input += weight;
-                    if(weight != ep_j[j].link.weight[i] && weight < 0)
+                    if (weight != ep_j[j].link.weight[i] && weight < 0)
                     {
-                        std::cout<<weight<<" "<<ep_j[j].link.weight[i]<<std::endl;
+                        std::cout << weight << " " << ep_j[j].link.weight[i] << std::endl;
                     }
-                    //ep_i[adr].input += ep_j[j].link.weight[i];
+                    // ep_i[adr].input += ep_j[j].link.weight[i];
                 }
         }
     };
