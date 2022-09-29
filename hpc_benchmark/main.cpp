@@ -117,6 +117,8 @@ int main(int argc, char *argv[])
             CX::Abort();
         }
     }
+    CX::Comm::barrier();
+    const CX::F64 init_offset = CX::GetWtime();
     CX::F64 dt = params::dt;
     CX::F64 end_time = presimtime + simtime; // length means the distance from center to the boundary
     const CX::S32 NE = brunel_params::NE * scale;
@@ -151,8 +153,6 @@ int main(int argc, char *argv[])
     CX::Connection<iaf_psc, syn, iaf_psc> L1e_to_L1i(L1e, L1i, iaf_psc::Channel::EXC);
     CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1i(L1i, L1i, iaf_psc::Channel::INH);
 
-    CX::Comm::barrier();
-    const CX::F64 init_offset = CX::GetWtime();
     L1e_to_L1e.SetIndegreeMultapsesOMP(CE);
     L1e_to_L1i.SetIndegreeMultapsesAutapsesOMP(CE);
     L1e.freeSpkAll();
@@ -165,14 +165,6 @@ int main(int argc, char *argv[])
     L1i_to_L1e.SetWeightAllOMP(brunel_params::g * JE_pA);
     L1i_to_L1i.SetWeightAllOMP(brunel_params::g * JE_pA);
 
-    CX::Comm::barrier();
-    if(CX::Comm::getRank() == 0)
-        std::cout<< "init time "<< CX::GetWtime() - init_offset << std::endl;
-
-    CX::Comm::barrier();
-    L1e.initRMA();//test
-    L1i.initRMA();
-
     std::random_device rd;
     std::default_random_engine eng(rd());
     std::normal_distribution<CX::F64> d(brunel_params::mean_potential, brunel_params::sigma_potential);
@@ -180,9 +172,10 @@ int main(int argc, char *argv[])
         L1e[i].y3_ = d(eng);
     for (CX::S32 i = 0; i < L1i.getNumLocal(); i++)
         L1i[i].y3_ = d(eng);
-
     CX::S32 step = 1;
     CX::Comm::barrier();
+    if (CX::Comm::getRank() == 0)
+        std::cout << "init time " << CX::GetWtime() - init_offset << std::endl;
     const CX::F64 time_offset = CX::GetWtime();
     for (CX::F64 time = 0; time < presimtime; time += dt, step++)
     {
@@ -194,14 +187,25 @@ int main(int argc, char *argv[])
         L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
         if (time > 1.5)
         {
-            std::random_device rd;
-            const CX::F64 ratio = 1e-3 * dt;
-            std::default_random_engine eng(rd());
-            std::poisson_distribution<CX::S64> d(nu_ext * CE * 1000 * ratio);
-            for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
-                L1e[i].input_ex_ += d(eng) * JE_pA;
-            for (CX::S32 i = 0; i < L1i.getNumLocal(); ++i)
-                L1i[i].input_ex_ += d(eng) * JE_pA;
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel
+#endif
+            {
+                std::random_device rd;
+                const CX::F64 ratio = 1e-3 * dt;
+                std::default_random_engine eng(rd());
+                std::poisson_distribution<CX::S64> d(nu_ext * CE * 1000 * ratio);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
+                    L1e[i].input_ex_ += d(eng) * JE_pA;
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (CX::S32 i = 0; i < L1i.getNumLocal(); ++i)
+                    L1i[i].input_ex_ += d(eng) * JE_pA;
+            }
         }
         L1e.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
         L1i.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
@@ -219,14 +223,25 @@ int main(int argc, char *argv[])
         L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
         if (time > 1.5)
         {
-            std::random_device rd;
-            const CX::F64 ratio = 1e-3 * dt;
-            std::default_random_engine eng(rd());
-            std::poisson_distribution<CX::S64> d(nu_ext * CE * 1000 * ratio);
-            for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
-                L1e[i].input_ex_ += d(eng) * JE_pA;
-            for (CX::S32 i = 0; i < L1i.getNumLocal(); ++i)
-                L1i[i].input_ex_ += d(eng) * JE_pA;
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel
+#endif
+            {
+                std::random_device rd;
+                const CX::F64 ratio = 1e-3 * dt;
+                std::default_random_engine eng(rd());
+                std::poisson_distribution<CX::S64> d(nu_ext * CE * 1000 * ratio);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
+                    L1e[i].input_ex_ += d(eng) * JE_pA;
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (CX::S32 i = 0; i < L1i.getNumLocal(); ++i)
+                    L1i[i].input_ex_ += d(eng) * JE_pA;
+            }
         }
         L1e.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
         L1i.CalcDynamics(iaf_psc::CalcDynamics(time, dt));

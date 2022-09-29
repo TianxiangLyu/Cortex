@@ -30,7 +30,7 @@ namespace Cortex
         DomainInfo dinfo_;
         NeuronInstance<Tneu> neuron_;
         DelayQueue<Tspk> queue_;
-        DelayRmaQueue<Tspk> rma_queue_;
+        //DelayRmaQueue<Tspk> rma_queue_;
         DstDomainInfo dst_dinfo_;
         std::vector<Tspk> spk_tot_;
         ~LayerInfo(){};
@@ -43,8 +43,8 @@ namespace Cortex
             : dinfo_(),
               neuron_(),
               layer_name_(layer_name),
-              layer_id_(num_layer_glb_++),
-              rma_queue_(dst_dinfo_)
+              layer_id_(num_layer_glb_++)
+              //rma_queue_(dst_dinfo_)
         {
             if (Comm::getRank() == 0)
                 std::cout << "Layer " << layer_name << " Initialization" << std::endl;
@@ -73,8 +73,8 @@ namespace Cortex
             : dinfo_(group),
               neuron_(group),
               layer_name_(layer_name),
-              layer_id_(num_layer_glb_++),
-              rma_queue_(dst_dinfo_)
+              layer_id_(num_layer_glb_++)
+              //rma_queue_(dst_dinfo_)
         {
             if (Comm::getRank() == 0)
                 std::cout << "Layer " << layer_name << " Initialization" << std::endl;
@@ -133,11 +133,11 @@ namespace Cortex
         }
         void initRMA()
         {
-            rma_queue_.initialize();
+            //rma_queue_.initialize();
         }
         void freeRMA()
         {
-            rma_queue_.free();
+            //rma_queue_.free();
         }
         void initWorld()
         {

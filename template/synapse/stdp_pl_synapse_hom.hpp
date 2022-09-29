@@ -230,7 +230,7 @@ public:
             for (CX::S32 j = 0; j < Njp; j++)
             {
 #ifdef CORTEX_THREAD_PARALLEL
-#pragma omp parallel for schedule(auto)
+#pragma omp parallel for
 #endif
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {

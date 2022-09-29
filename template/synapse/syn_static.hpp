@@ -82,14 +82,12 @@ public:
                         Synapse *const ep_j, const CX::S32 Njp)
         {
             for (CX::S32 j = 0; j < Njp; j++)
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {
                     const CX::S32 adr = ep_j[j].link.link[i];
-                    ep_i[adr].input += weight;
-                    if (weight != ep_j[j].link.weight[i] && weight < 0)
-                    {
-                        std::cout << weight << " " << ep_j[j].link.weight[i] << std::endl;
-                    }
                     // ep_i[adr].input += ep_j[j].link.weight[i];
                 }
         }
