@@ -62,7 +62,6 @@ namespace Cortex
             }
             setNeuronID();
             dst_dinfo_.setSrcInfo(dinfo_);
-            initWorld();
             const S64 n_tot = getNumGlobal();
             if (Comm::getRank() == 0)
                 std::cout << "Layer " << layer_name << " Initialization " << n_tot << std::endl;
@@ -94,7 +93,6 @@ namespace Cortex
             }
             setNeuronID();
             dst_dinfo_.setSrcInfo(dinfo_);
-            initWorld();
             const S64 n_tot = getNumGlobal();
             if (Comm::getRank() == 0)
                 std::cout << "Layer " << layer_name << " Initialization " << n_tot << std::endl;
@@ -121,11 +119,8 @@ namespace Cortex
         }
         void freeSpkAll()
         {
-            if (spk_tot_.size() > 0)
-            {
-                spk_tot_.clear();
-                spk_tot_.shrink_to_fit();
-            }
+            spk_tot_.clear();
+            spk_tot_.shrink_to_fit();
         }
         void Update(const F64 time)
         {
@@ -143,14 +138,14 @@ namespace Cortex
         {
             // rma_queue_.free();
         }
-        void initWorld()
+        void SpkAllGather()
         {
             const S32 n_loc = neuron_.getNumberOfParticleLocal();
             std::vector<Tspk> spk_loc;
             spk_loc.reserve(n_loc);
             for (S32 i = 0; i < n_loc; i++)
                 spk_loc.push_back(Tspk(neuron_[i]));
-            Comm::allGatherVAll(spk_loc, spk_loc.size(), spk_tot_);
+            dst_dinfo_.getCommInfo().allGatherVAll(spk_loc, spk_loc.size(), spk_tot_);
         }
         void setNeuronID()
         {

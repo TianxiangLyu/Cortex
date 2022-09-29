@@ -241,6 +241,9 @@ public:
               };
         void operator()(CX::NeuronInstance<Neuron> &neuron)
         {
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
             for (CX::S32 i = 0; i < neuron.getNumberOfParticleLocal(); ++i)
             {
                 if (neuron[i].r_ == 0)

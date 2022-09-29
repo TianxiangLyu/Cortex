@@ -245,8 +245,14 @@ int main(int argc, char *argv[])
         }
         L1e.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
         L1i.CalcDynamics(iaf_psc::CalcDynamics(time, dt));
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
         for (CX::S32 i = 0; i < L1e.getNumLocal(); ++i)
             L1e[i].recordSpike();
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
         for (CX::S32 i = 0; i < L1i.getNumLocal(); i++)
             L1i[i].recordSpike();
     }

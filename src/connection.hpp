@@ -41,10 +41,8 @@ namespace Cortex
                 epi_org_.reserve(n_epi);
                 for (S32 i = 0; i < n_epi; i++)
                     epi_org_.push_back(typename Tsyn::Post(dst[i], dst[i].getInput(Channel)));
-                const S32 n_epj = spk_tot_.size();
+                const S32 n_epj = src.getNumGlobal();
                 epj_link_.resize(n_epj);
-                for (S32 j = 0; j < n_epj; j++)
-                    map_id_to_link_.insert(std::pair<S32, S32>(spk_tot_[j].id, j));
             }
             // std::cout<<"Rank "<<Comm::getRank()<<" epi_org_.size() "<<epi_org_.size()<<std::endl;
         };
@@ -60,11 +58,7 @@ namespace Cortex
                 const S32 n_spk = slot->epj_recv_.size();
                 epj_act_.reserve(n_spk);
                 for (S32 j = 0; j < n_spk; j++)
-                {
-                    std::unordered_map<S32, S32>::iterator it = map_id_to_link_.find(slot->epj_recv_[j].id);
-                    assert(it != map_id_to_link_.end());
-                    epj_act_.push_back(typename Tsyn::Synapse(slot->epj_recv_[j], epj_link_[it->second]));
-                }
+                    epj_act_.push_back(typename Tsyn::Synapse(slot->epj_recv_[j], epj_link_[slot->epj_recv_[j].id]));
             }
             /* if(Comm::getRank() == 0)
             {
@@ -101,7 +95,6 @@ namespace Cortex
             const S32 n_threads = Comm::getNumberOfThread();
             const S32 n_epi = epi_org_.size();
             const S32 n_epj = epj_link_.size();
-            assert(n_epj == spk_tot_.size());
             std::vector<S32> link_num(n_epj, 0);
             std::vector<S32> ptr(n_epj, 0);
 #ifdef CORTEX_THREAD_PARALLEL
@@ -126,9 +119,8 @@ namespace Cortex
                     for (S32 j = 0; j < indegree; j++)
                     {
                         S32 adr = distr(eng);
-                        while (spk_tot_[adr].id == epi_org_[i].id)
+                        while (adr == epi_org_[i].id)
                             adr = distr(eng);
-                        assert(spk_tot_[adr].id != epi_org_[i].id);
                         link_num_ith[adr]++;
                     }
                 }
@@ -154,10 +146,8 @@ namespace Cortex
                     for (S32 j = 0; j < indegree; j++)
                     {
                         S32 adr = distr(eng);
-                        while (spk_tot_[adr].id == epi_org_[i].id)
+                        while (adr == epi_org_[i].id)
                             adr = distr(eng);
-                        assert(adr >= 0 && adr < n_epj);
-                        assert(spk_tot_[adr].id != epi_org_[i].id);
 #ifdef CORTEX_THREAD_PARALLEL
                         omp_set_lock(&(lock[adr]));
 #endif
@@ -183,9 +173,9 @@ namespace Cortex
                 for (S32 j = 0; j < indegree; j++)
                 {
                     S32 adr = distr(eng);
-                    while (spk_tot_[adr].id == epi_org_[i].id)
+                    while (adr == epi_org_[i].id)
                         adr = distr(eng);
-                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    assert(adr != epi_org_[i].id);
                     link_num_check[adr]++;
                 }
             }
@@ -197,9 +187,9 @@ namespace Cortex
                 for (S32 j = 0; j < indegree; j++)
                 {
                     S32 adr = distr(eng);
-                    while (spk_tot_[adr].id == epi_org_[i].id)
+                    while (adr == epi_org_[i].id)
                         adr = distr(eng);
-                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    assert(adr != epi_org_[i].id);
                     if (ptr_check[adr] >= epj_link_check[adr].n_link)
                     {
                         std::cout << adr << " " << ptr_check[adr] << " " << epj_link_check[adr].n_link << std::endl;
@@ -235,7 +225,6 @@ namespace Cortex
             const S32 n_threads = Comm::getNumberOfThread();
             const S32 n_epi = epi_org_.size();
             const S32 n_epj = epj_link_.size();
-            assert(n_epj == spk_tot_.size());
             std::vector<S32> link_num(n_epj, 0);
             std::vector<S32> ptr(n_epj, 0);
 #ifdef CORTEX_THREAD_PARALLEL
@@ -310,9 +299,9 @@ namespace Cortex
                 for (S32 j = 0; j < indegree; j++)
                 {
                     S32 adr = distr(eng);
-                    while (spk_tot_[adr].id == epi_org_[i].id)
+                    while (adr == epi_org_[i].id)
                         adr = distr(eng);
-                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    assert(adr != epi_org_[i].id);
                     link_num_check[adr]++;
                 }
             }
@@ -324,9 +313,9 @@ namespace Cortex
                 for (S32 j = 0; j < indegree; j++)
                 {
                     S32 adr = distr(eng);
-                    while (spk_tot_[adr].id == epi_org_[i].id)
+                    while (adr == epi_org_[i].id)
                         adr = distr(eng);
-                    assert(spk_tot_[adr].id != epi_org_[i].id);
+                    assert(adr != epi_org_[i].id);
                     if (ptr_check[adr] >= epj_link_check[adr].n_link)
                     {
                         std::cout << adr << " " << ptr_check[adr] << " " << epj_link_check[adr].n_link << std::endl;
