@@ -102,12 +102,8 @@ namespace Cortex
             const S32 n_epi = epi_org_.size();
             const S32 n_epj = epj_link_.size();
             assert(n_epj == spk_tot_.size());
-            std::vector<S32> link_num(n_epj);
-            std::vector<S32> ptr(n_epj);
-            std::vector<S32> ptr_check(n_epj);
-            std::fill(link_num.begin(), link_num.end(), 0);
-            std::fill(ptr.begin(), ptr.end(), 0);
-            std::fill(ptr_check.begin(), ptr_check.end(), 0);
+            std::vector<S32> link_num(n_epj, 0);
+            std::vector<S32> ptr(n_epj, 0);
 #ifdef CORTEX_THREAD_PARALLEL
             std::vector<omp_lock_t> lock(n_epj);
             for (S32 j = 0; j < n_epj; j++)
@@ -118,7 +114,7 @@ namespace Cortex
 #endif
             {
                 const S32 ith = Comm::getThreadNum();
-                std::vector<S32> link_num_ith(n_epj);
+                std::vector<S32> link_num_ith(n_epj, 0);
                 std::uniform_int_distribution<S32> distr(0, n_epj - 1);
                 std::default_random_engine test(epi_org_[0].randSeed);
 #ifdef CORTEX_THREAD_PARALLEL
@@ -178,6 +174,7 @@ namespace Cortex
             for (S32 j = 0; j < n_epj; j++)
                 assert(ptr[j] == link_num[j]);
             std::vector<S32> link_num_check(n_epj);
+            std::vector<S32> ptr_check(n_epj, 0);
             std::vector<typename Tsyn::LinkInfo> epj_link_check(n_epj);
             std::uniform_int_distribution<S32> distr(0, n_epj - 1);
             for (S32 i = 0; i < n_epi; i++)
@@ -239,12 +236,8 @@ namespace Cortex
             const S32 n_epi = epi_org_.size();
             const S32 n_epj = epj_link_.size();
             assert(n_epj == spk_tot_.size());
-            std::vector<S32> link_num(n_epj);
-            std::vector<S32> ptr(n_epj);
-            std::vector<S32> ptr_check(n_epj);
-            std::fill(link_num.begin(), link_num.end(), 0);
-            std::fill(ptr.begin(), ptr.end(), 0);
-            std::fill(ptr_check.begin(), ptr_check.end(), 0);
+            std::vector<S32> link_num(n_epj, 0);
+            std::vector<S32> ptr(n_epj, 0);
 #ifdef CORTEX_THREAD_PARALLEL
             std::vector<omp_lock_t> lock(n_epj);
             for (S32 j = 0; j < n_epj; j++)
@@ -255,7 +248,7 @@ namespace Cortex
 #endif
             {
                 const S32 ith = Comm::getThreadNum();
-                std::vector<S32> link_num_ith(n_epj);
+                std::vector<S32> link_num_ith(n_epj, 0);
                 std::uniform_int_distribution<S32> distr(0, n_epj - 1);
                 std::default_random_engine test(epi_org_[0].randSeed);
 #ifdef CORTEX_THREAD_PARALLEL
@@ -308,6 +301,7 @@ namespace Cortex
             for (S32 j = 0; j < n_epj; j++)
                 assert(ptr[j] == link_num[j]);
             std::vector<S32> link_num_check(n_epj);
+            std::vector<S32> ptr_check(n_epj, 0);
             std::vector<typename Tsyn::LinkInfo> epj_link_check(n_epj);
             std::uniform_int_distribution<S32> distr(0, n_epj - 1);
             for (S32 i = 0; i < n_epi; i++)

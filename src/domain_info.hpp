@@ -14,7 +14,7 @@
 #endif
 
 constexpr bool DEBUG_FLAG_DD = false;
-#define CORTEX_DFLT_VAL_COEF_EMA       1.0
+#define CORTEX_DFLT_VAL_COEF_EMA 1.0
 namespace Cortex
 {
 
@@ -122,7 +122,7 @@ namespace Cortex
             DeleteArray(n_smp_disp_array_);
             DeleteArray(pos_domain_);
             DeleteArray(pos_domain_temp_);
-            const S32 n_proc = comm_info_.getNumberOfProc(); //problem here
+            const S32 n_proc = comm_info_.getNumberOfProc(); // problem here
             const S32 my_rank = comm_info_.getRank();
             n_smp_array_ = new S32[n_proc];
             n_smp_disp_array_ = new S32[n_proc + 1];
@@ -167,7 +167,7 @@ namespace Cortex
             number_of_sample_particle_tot_ = 0;
             number_of_sample_particle_loc_ = 0;
             S32 rank_tmp[DIMENSION_LIMIT];
-            if(comm_info_.isNotCommNull())
+            if (comm_info_.isNotCommNull())
             {
                 SetNumberOfDomainMultiDimension<DIMENSION>(n_proc, my_rank, n_domain_, rank_tmp);
 #ifdef CORTEX_MPI_PARALLEL
@@ -193,7 +193,7 @@ namespace Cortex
         }
 #endif
         DomainInfo()
-        :comm_info_()
+            : comm_info_()
         {
             first_call_by_initialize = true;
             first_call_by_decomposeDomain = true;
@@ -217,7 +217,7 @@ namespace Cortex
             initialize();
         };
         DomainInfo(MPI_Group group)
-        :comm_info_(group)
+            : comm_info_(group)
         {
             first_call_by_initialize = true;
             first_call_by_decomposeDomain = true;
@@ -260,7 +260,7 @@ namespace Cortex
             }
             assert(first_call_by_initialize);
             first_call_by_initialize = false;
-            //initialize_impl(coef_ema);
+            // initialize_impl(coef_ema);
             initialize_group(coef_ema);
         }
 
@@ -428,7 +428,6 @@ namespace Cortex
                     }
                 }
 
-
                 // ------------------------------------------
                 // --- y direction --------------------------
                 wtmp = GetWtime();
@@ -567,17 +566,20 @@ namespace Cortex
         template <class Tpsys>
         void decomposeDomainAll(Tpsys &psys)
         {
-            if(comm_info_.isNotCommNull())
+            if (boundary_condition_ != BOUNDARY_CONDITION_NULL)
             {
-                const F64 wgh = psys.getNumberOfParticleLocal();
-                decomposeDomainAll(psys, wgh);
+                if (comm_info_.isNotCommNull())
+                {
+                    const F64 wgh = psys.getNumberOfParticleLocal();
+                    decomposeDomainAll(psys, wgh);
+                }
+                Comm::broadcast(pos_domain_, comm_info_.getNumberOfProc(), comm_info_.transRank(0, Comm::getCommInfo()));
             }
-            Comm::broadcast(pos_domain_, comm_info_.getNumberOfProc(), comm_info_.transRank(0, Comm::getCommInfo()));
         }
 
         void decomposeDomainAll(const F64ort &pos_my_domain)
         {
-            //restart
+            // restart
             Comm::allGather(&pos_my_domain, 1, &pos_domain_[0]);
             first_call_by_decomposeDomain = true;
         }

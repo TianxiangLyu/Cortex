@@ -30,7 +30,7 @@ namespace Cortex
         DomainInfo dinfo_;
         NeuronInstance<Tneu> neuron_;
         DelayQueue<Tspk> queue_;
-        //DelayRmaQueue<Tspk> rma_queue_;
+        // DelayRmaQueue<Tspk> rma_queue_;
         DstDomainInfo dst_dinfo_;
         std::vector<Tspk> spk_tot_;
         ~LayerInfo(){};
@@ -44,10 +44,8 @@ namespace Cortex
               neuron_(),
               layer_name_(layer_name),
               layer_id_(num_layer_glb_++)
-              //rma_queue_(dst_dinfo_)
+        // rma_queue_(dst_dinfo_)
         {
-            if (Comm::getRank() == 0)
-                std::cout << "Layer " << layer_name << " Initialization" << std::endl;
             checkLayerName(layer_name); // couldn't ganrantee thread safe here
             dinfo_.setBoundaryCondition(bc);
             const F64ort pos_root_domain = func_init(neuron_);
@@ -62,8 +60,12 @@ namespace Cortex
                 const S32 rand_seed = distr(eng);
                 neuron_[i].init(rand_seed);
             }
+            setNeuronID();
             dst_dinfo_.setSrcInfo(dinfo_);
             initWorld();
+            const S64 n_tot = getNumGlobal();
+            if (Comm::getRank() == 0)
+                std::cout << "Layer " << layer_name << " Initialization " << n_tot << std::endl;
         };
         template <class Tfunc_init>
         LayerInfo(const std::string layer_name,
@@ -74,10 +76,8 @@ namespace Cortex
               neuron_(group),
               layer_name_(layer_name),
               layer_id_(num_layer_glb_++)
-              //rma_queue_(dst_dinfo_)
+        // rma_queue_(dst_dinfo_)
         {
-            if (Comm::getRank() == 0)
-                std::cout << "Layer " << layer_name << " Initialization" << std::endl;
             checkLayerName(layer_name); // couldn't ganrantee thread safe here
             dinfo_.setBoundaryCondition(bc);
             const F64ort pos_root_domain = func_init(neuron_);
@@ -92,8 +92,12 @@ namespace Cortex
                 const S32 rand_seed = distr(eng);
                 neuron_[i].init(rand_seed);
             }
+            setNeuronID();
             dst_dinfo_.setSrcInfo(dinfo_);
             initWorld();
+            const S64 n_tot = getNumGlobal();
+            if (Comm::getRank() == 0)
+                std::cout << "Layer " << layer_name << " Initialization " << n_tot << std::endl;
         };
         S32 getLayerID() { return layer_id_; }
         std::string getLayerName() { return layer_name_; }
@@ -117,7 +121,7 @@ namespace Cortex
         }
         void freeSpkAll()
         {
-            if(spk_tot_.size() > 0)
+            if (spk_tot_.size() > 0)
             {
                 spk_tot_.clear();
                 spk_tot_.shrink_to_fit();
@@ -133,11 +137,11 @@ namespace Cortex
         }
         void initRMA()
         {
-            //rma_queue_.initialize();
+            // rma_queue_.initialize();
         }
         void freeRMA()
         {
-            //rma_queue_.free();
+            // rma_queue_.free();
         }
         void initWorld()
         {
@@ -147,6 +151,28 @@ namespace Cortex
             for (S32 i = 0; i < n_loc; i++)
                 spk_loc.push_back(Tspk(neuron_[i]));
             Comm::allGatherVAll(spk_loc, spk_loc.size(), spk_tot_);
+        }
+        void setNeuronID()
+        {
+            if (dinfo_.getCommInfo().isNotCommNull())
+            {
+                const S32 rank = dinfo_.getCommInfo().getRank();
+                const S32 n_proc = dinfo_.getCommInfo().getNumberOfProc();
+                const S32 n_loc = neuron_.getNumberOfParticleLocal();
+                std::vector<S32> n_recv(n_proc, 0);
+                std::vector<S32> n_disp(n_proc, 0);
+                dinfo_.getCommInfo().allGather(&n_loc, 1, n_recv.data());
+                for(S32 i = 1; i < n_proc; i++)
+                    n_disp[i] = n_recv[i - 1] + n_disp[i - 1];
+                /* if(Comm::getRank() == 0)
+                {
+                    for(S32 i = 0; i < n_proc; i++)
+                        std::cout<<n_disp[i]<<" ";
+                    std::cout<<std::endl;
+                } */
+                for (S32 i = 0; i < neuron_.getNumberOfParticleLocal(); i++)
+                    neuron_[i].id = n_disp[rank] + i;
+            }
         }
         void addConn(const S32 target, const F64 delay, DomainInfo &d)
         {

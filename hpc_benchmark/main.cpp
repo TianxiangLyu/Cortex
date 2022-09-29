@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cortex.hpp>
-#include <neuron/iaf_psc_alpha_null_pos.hpp>
+#include <neuron/iaf_psc_alpha.hpp>
 #include <synapse/stdp_pl_synapse_hom.hpp>
 #include <synapse/syn_static.hpp>
 #include <synapse/syn_static_hom.hpp>
@@ -141,12 +141,12 @@ int main(int argc, char *argv[])
     MPI_Group world_group;
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
-    typedef iaf_psc_alpha_null_pos<model_params> iaf_psc;
+    typedef iaf_psc_alpha<model_params> iaf_psc;
     typedef stdp_pl_synapse_hom<stdp_params> stdp;
     typedef syn_static_hom<syn_params> syn;
 
-    CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NE), world_group);
-    CX::Layer<iaf_psc>::Default L1i("L1i", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NI), world_group);
+    CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
+    CX::Layer<iaf_psc>::Default L1i("L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
     // Using a specific MPI_Group to determine the layer allocation on specific processes.
     CX::Connection<iaf_psc, stdp, iaf_psc> L1e_to_L1e(L1e, L1e, iaf_psc::Channel::EXC);
     CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1e(L1i, L1e, iaf_psc::Channel::INH);
