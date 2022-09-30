@@ -157,7 +157,7 @@ namespace Cortex
                 std::vector<S32> n_recv(n_proc, 0);
                 std::vector<S32> n_disp(n_proc, 0);
                 dinfo_.getCommInfo().allGather(&n_loc, 1, n_recv.data());
-                for(S32 i = 1; i < n_proc; i++)
+                for (S32 i = 1; i < n_proc; i++)
                     n_disp[i] = n_recv[i - 1] + n_disp[i - 1];
                 /* if(Comm::getRank() == 0)
                 {

@@ -101,14 +101,14 @@ public:
               Kminus_triplet(0.0),
               trace(0.0),
               input(_input){};
-/*         template <class Tep>
-        void setFromEP(const Tep &ep)
-        {
-            this->id = ep.id;
-            this->pos = ep.pos;
-            this->randSeed = ep.randSeed;
-            this->Rsearch = ep.Rsearch;
-        } */
+        /*         template <class Tep>
+                void setFromEP(const Tep &ep)
+                {
+                    this->id = ep.id;
+                    this->pos = ep.pos;
+                    this->randSeed = ep.randSeed;
+                    this->Rsearch = ep.Rsearch;
+                } */
         void clearHistory()
         {
             this->history.clear();
@@ -290,7 +290,7 @@ public:
             for (CX::S32 i = 0; i < epi_adr.size(); i++)
             {
                 auto range = link_map.equal_range(epi_adr[i]);
-                for (auto it = range.first; it!=range.second; it++)
+                for (auto it = range.first; it != range.second; it++)
                 {
                     it->second.weight = 0;
                 }

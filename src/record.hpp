@@ -15,11 +15,10 @@ namespace Cortex
 
     public:
         template <class Tneu, class Tspk>
-        Recorder(LayerInfo<Tneu, Tspk> &src, 
-                const S32 record_num, 
-                const RECORD_SELECT_MODE mode = RECORD_SELECT_MODE::SERIAL)
-        {
-            
+        Recorder(LayerInfo<Tneu, Tspk> &src,
+                 const S32 record_num,
+                 const RECORD_SELECT_MODE mode = RECORD_SELECT_MODE::SERIAL){
+
         };
     };
 

@@ -12,7 +12,7 @@ public:
         CX::S32 target;
         Link(){};
         Link(const CX::S32 _target)
-        : target(_target){};
+            : target(_target){};
     };
     struct LinkInfo
     {
@@ -50,11 +50,11 @@ public:
               randSeed(fp.randSeed),
               Rsearch(fp.Rsearch),
               input(_input)
-              {
+        {
 #ifdef CORTEX_THREAD_PARALLEL
-                omp_init_lock(&lock);
+            omp_init_lock(&lock);
 #endif
-              };
+        };
         template <class Tep>
         void setFromEP(const Tep &ep)
         {
@@ -80,9 +80,10 @@ public:
     {
     private:
         const CX::F64 weight;
+
     public:
         CalcInteraction(const CX::F64 _weight)
-        : weight(_weight){};
+            : weight(_weight){};
         void operator()(Post *const ep_i, const CX::S32 Nip,
                         Synapse *const ep_j, const CX::S32 Njp)
         {

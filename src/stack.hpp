@@ -1,24 +1,31 @@
 #pragma once
-#include<cassert>
-namespace Cortex{
-    template <typename T, int NMAX=200>
-    class Stack{
+#include <cassert>
+namespace Cortex
+{
+    template <typename T, int NMAX = 200>
+    class Stack
+    {
     private:
         T val[NMAX];
         int num;
+
     public:
-        //Stack() : num(0) {}
-        void push(const T &v){
+        // Stack() : num(0) {}
+        void push(const T &v)
+        {
             assert(num < NMAX);
             val[num++] = v;
         }
-        T pop(){
+        T pop()
+        {
             return val[--num];
         }
-        bool empty() const{
-            return 0==num;
+        bool empty() const
+        {
+            return 0 == num;
         }
-        void init(){
+        void init()
+        {
             num = 0;
         }
     };

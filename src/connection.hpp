@@ -130,7 +130,7 @@ namespace Cortex
                 for (S32 j = 0; j < n_epj; j++)
                     link_num[j] += link_num_ith[j];
 #ifdef CORTEX_THREAD_PARALLEL
-#pragma omp barrier //important
+#pragma omp barrier // important
 #endif
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp for
@@ -158,6 +158,14 @@ namespace Cortex
 #endif
                     }
                 }
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 j = 0; j < n_epj; j++)
+                    std::sort(epj_link_[j].info, epj_link_[j].info + epj_link_[j].n_link,
+                              [](const typename Tsyn::Link &l, const typename Tsyn::Link &r)
+                                  -> bool
+                              { return l.target < r.target; });
             } // end omp
             /* for (S32 j = 0; j < n_epj; j++)
                 omp_destroy_lock(&(lock[j]));
@@ -258,7 +266,7 @@ namespace Cortex
                 for (S32 j = 0; j < n_epj; j++)
                     link_num[j] += link_num_ith[j];
 #ifdef CORTEX_THREAD_PARALLEL
-#pragma omp barrier //important
+#pragma omp barrier // important
 #endif
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp for
@@ -284,6 +292,14 @@ namespace Cortex
 #endif
                     }
                 }
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+                for (S32 j = 0; j < n_epj; j++)
+                    std::sort(epj_link_[j].info, epj_link_[j].info + epj_link_[j].n_link,
+                              [](const typename Tsyn::Link &l, const typename Tsyn::Link &r)
+                                  -> bool
+                              { return l.target < r.target; });
             } // end omp
             /* for (S32 j = 0; j < n_epj; j++)
                 omp_destroy_lock(&(lock[j]));
