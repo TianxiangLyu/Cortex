@@ -145,6 +145,29 @@ int main(int argc, char *argv[])
     typedef stdp_pl_synapse_hom<stdp_params> stdp;
     typedef syn_static_hom<syn_params> syn;
 
+    /* std::vector<stdp::Link> test(9);
+    test[0].target = 0;
+    test[1].target = 3;
+    test[2].target = 5;
+    test[3].target = 6;
+    test[4].target = 8;
+    test[5].target = 10;
+    test[6].target = 132;
+    test[7].target = 554;
+    test[8].target = 992;
+    const CX::S32 left = 0;
+    const CX::S32 right = 2;
+    if(CX::Comm::getRank() == 0)
+    {
+        const CX::S32 lo = LFsearch(test.data(), test.size(), left);
+        const CX::S32 hi = RHsearch(test.data(), test.size(), right);
+        std::cout<< lo << " " << test[lo].target << " " << hi << " " << test[hi].target <<std::endl;
+    }
+
+    CX::Comm::barrier();
+    CX::Finalize();
+    return 0; */
+
     CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
     CX::Layer<iaf_psc>::Default L1i("L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
     // Using a specific MPI_Group to determine the layer allocation on specific processes.
@@ -181,7 +204,7 @@ int main(int argc, char *argv[])
     {
         L1e.Update(time);
         L1i.Update(time);
-        L1e_to_L1e.PreAct(time, stdp::CalcInteraction(time));
+        L1e_to_L1e.PreAct(time, stdp::TestInteraction(time));
         L1e_to_L1i.PreAct(time, syn::CalcInteraction(JE_pA));
         L1i_to_L1e.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
         L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
@@ -217,7 +240,7 @@ int main(int argc, char *argv[])
     {
         L1e.Update(time);
         L1i.Update(time);
-        L1e_to_L1e.PreAct(time, stdp::CalcInteraction(time));
+        L1e_to_L1e.PreAct(time, stdp::TestInteraction(time));
         L1e_to_L1i.PreAct(time, syn::CalcInteraction(JE_pA));
         L1i_to_L1e.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
         L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));

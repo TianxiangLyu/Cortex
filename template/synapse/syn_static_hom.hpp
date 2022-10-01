@@ -87,15 +87,25 @@ public:
         void operator()(Post *const ep_i, const CX::S32 Nip,
                         Synapse *const ep_j, const CX::S32 Njp)
         {
-            for (CX::S32 j = 0; j < Njp; j++)
 #ifdef CORTEX_THREAD_PARALLEL
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-                for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
+            {
+                const CX::S32 ith = CX::Comm::getThreadNum();
+                const CX::S32 nth = CX::Comm::getNumThreads();
+                const CX::S32 i_start = (Nip / nth + 1) * ith;
+                const CX::S32 i_end = (Nip / nth + 1) * (ith + 1);
+                for (CX::S32 j = 0; j < Njp; j++)
                 {
-                    const CX::S32 adr = ep_j[j].link.info[i].target;
-                    ep_i[adr].input += weight;
+                    const CX::S32 lo = LFsearch(ep_j[j].link.info, ep_j[j].link.n_link, i_start);
+                    const CX::S32 hi = RHsearch(ep_j[j].link.info, ep_j[j].link.n_link, i_end);
+                    for (CX::S32 i = lo; i <= hi; i++)
+                    {
+                        const CX::S32 adr = ep_j[j].link.info[i].target;
+                        ep_i[adr].input += weight;
+                    }
                 }
+            }
         }
     };
 };

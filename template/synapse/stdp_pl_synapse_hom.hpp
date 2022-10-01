@@ -5,6 +5,42 @@
 #include <unordered_map>
 #include <unordered_set>
 namespace CX = Cortex;
+template <class Tlink>
+inline CX::S32 LFsearch(Tlink *info, CX::S32 num, CX::S32 target)
+{
+    CX::S32 lo = 0;
+    CX::S32 hi = num - 1;
+    while (hi - lo > 1)
+    {
+        CX::S32 mid = (hi + lo) / 2;
+        if (info[mid].target < target)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    if (info[lo].target >= target)
+        return lo;
+    else
+        return hi;
+}
+template <class Tlink>
+inline CX::S32 RHsearch(Tlink *info, CX::S32 num, CX::S32 target)
+{
+    CX::S32 lo = 0;
+    CX::S32 hi = num - 1;
+    while (hi - lo > 1)
+    {
+        CX::S32 mid = (hi + lo) / 2;
+        if (info[mid].target > target)
+            hi = mid - 1;
+        else
+            lo = mid;
+    }
+    if (info[hi].target <= target)
+        return hi;
+    else
+        return lo;
+}
 template <class params> // Add InputChannel?
 class stdp_pl_synapse_hom
 {
@@ -196,16 +232,6 @@ public:
               lastSpkTime(ep.lastSpkTime),
               link(_link){};
     };
-    class ClearSpikeHistory // and check
-    {
-    public:
-        void operator()(Post *const ep_i, const CX::S32 Nip,
-                        Synapse *const ep_j, const CX::S32 Njp)
-        {
-            for (CX::S32 i = 0; i < Nip; i++)
-                ep_i[i].clearHistory();
-        }
-    };
     class CalcInteraction
     {
     private:
@@ -269,52 +295,61 @@ public:
     public:
         TestInteraction(const CX::F64 _time)
             : time(_time){};
-        void operator()(Post *const ep_i, const CX::S32 Nip,
-                        Synapse *const ep_j, const CX::S32 Njp)
+        inline void operator()(Post *const ep_i, const CX::S32 Nip,
+                               Synapse *const ep_j, const CX::S32 Njp)
         {
-            std::vector<CX::S32> epi_adr;
-            std::unordered_set<CX::S32> epi_set;
-            std::unordered_multimap<CX::S32, Link> link_map;
-            for (CX::S32 j = 0; j < Njp; j++)
-                for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
-                {
-                    link_map.insert(std::pair<CX::S32, Link>(ep_j[j].link.info[i].target, Link(j, ep_j[j].link.info[i])));
-                    epi_set.insert(ep_j[j].link.info[i].target);
-                }
-            epi_adr.reserve(epi_set.size());
-            for (auto it = epi_set.begin(); it != epi_set.end(); it++)
-                epi_adr.push_back(*it);
 #ifdef CORTEX_THREAD_PARALLEL
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-            for (CX::S32 i = 0; i < epi_adr.size(); i++)
             {
-                auto range = link_map.equal_range(epi_adr[i]);
-                for (auto it = range.first; it != range.second; it++)
+                const CX::S32 ith = CX::Comm::getThreadNum();
+                const CX::S32 nth = CX::Comm::getNumThreads();
+                const CX::S32 i_start = (Nip / nth + 1) * ith;
+                const CX::S32 i_end = (Nip / nth + 1) * (ith + 1);
+                for (CX::S32 j = 0; j < Njp; j++)
                 {
-                    it->second.weight = 0;
-                }
-            }
-            for (CX::S32 j = 0; j < Njp; j++)
-            {
-                for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
-                {
-                    const CX::S32 adr = ep_j[j].link.info[i].target;
-                    const CX::F64 drtc_delay = delay;
-                    const CX::F64 currSpkTime = ep_j[j].currSpkTime;
-                    const CX::F64 lastSpkTime = ep_j[j].lastSpkTime;
-                    const stdp_pl_synapse_hom::spike_interval spk_his = ep_i[adr].getHistory(lastSpkTime - drtc_delay, currSpkTime - drtc_delay);
-                    for (auto it = spk_his.start; it != spk_his.end; it++)
+                    const CX::S32 lo = LFsearch(ep_j[j].link.info, ep_j[j].link.n_link, i_start);
+                    const CX::S32 hi = RHsearch(ep_j[j].link.info, ep_j[j].link.n_link, i_end);
+                    for (CX::S32 i = lo; i <= hi; i++)
                     {
-                        const CX::F64 minus_dt = lastSpkTime - (it->SpkTime + drtc_delay);
-                        // assert(minus_dt < 0 - stdp_eps);
-                        ep_j[j].link.info[i].weight = facilitate(ep_j[j].link.info[i].weight, ep_j[j].link.info[i].Kplus * std::exp(minus_dt * tau_plus_inv));
+                        const CX::S32 adr = ep_j[j].link.info[i].target;
+                        const CX::F64 drtc_delay = delay;
+                        const CX::F64 currSpkTime = ep_j[j].currSpkTime;
+                        const CX::F64 lastSpkTime = ep_j[j].lastSpkTime;
+                        const stdp_pl_synapse_hom::spike_interval spk_his = ep_i[adr].getHistory(lastSpkTime - drtc_delay, currSpkTime - drtc_delay);
+                        for (typename CX::aligned_deque<histentry>::iterator it = spk_his.start; it != spk_his.end; it++)
+                        {
+                            const CX::F64 minus_dt = lastSpkTime - (it->SpkTime + drtc_delay);
+                            // assert(minus_dt < 0 - stdp_eps);
+                            ep_j[j].link.info[i].weight = facilitate(ep_j[j].link.info[i].weight, ep_j[j].link.info[i].Kplus * std::exp(minus_dt * tau_plus_inv));
+                        }
+                        ep_j[j].link.info[i].weight = depress(ep_j[j].link.info[i].weight, ep_i[adr].getKvalue(time - drtc_delay));
+                        ep_j[j].link.info[i].Kplus = ep_j[j].link.info[i].Kplus * std::exp((lastSpkTime - time) * tau_plus_inv) + 1.0;
+                        ep_i[adr].input += ep_j[j].link.info[i].weight;
                     }
-                    ep_j[j].link.info[i].weight = depress(ep_j[j].link.info[i].weight, ep_i[adr].getKvalue(time - drtc_delay));
-                    ep_j[j].link.info[i].Kplus = ep_j[j].link.info[i].Kplus * std::exp((lastSpkTime - time) * tau_plus_inv) + 1.0;
-                    ep_i[adr].input += ep_j[j].link.info[i].weight;
                 }
             }
+            /* #ifdef CORTEX_THREAD_PARALLEL
+            #pragma omp parallel for
+            #endif
+                            for (CX::S32 j = 0; j < Njp; j++)
+                                for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
+                                {
+                                    const CX::S32 adr = ep_j[j].link.info[i].target;
+                                    const CX::F64 drtc_delay = delay;
+                                    const CX::F64 currSpkTime = ep_j[j].currSpkTime;
+                                    const CX::F64 lastSpkTime = ep_j[j].lastSpkTime;
+                                    const stdp_pl_synapse_hom::spike_interval spk_his = ep_i[adr].getHistory(lastSpkTime - drtc_delay, currSpkTime - drtc_delay);
+                                    for (typename CX::aligned_deque<histentry>::iterator it = spk_his.start; it != spk_his.end; it++)
+                                    {
+                                        const CX::F64 minus_dt = lastSpkTime - (it->SpkTime + drtc_delay);
+                                        // assert(minus_dt < 0 - stdp_eps);
+                                        ep_j[j].link.info[i].weight = facilitate(ep_j[j].link.info[i].weight, ep_j[j].link.info[i].Kplus * std::exp(minus_dt * tau_plus_inv));
+                                    }
+                                    ep_j[j].link.info[i].weight = depress(ep_j[j].link.info[i].weight, ep_i[adr].getKvalue(time - drtc_delay));
+                                    ep_j[j].link.info[i].Kplus = ep_j[j].link.info[i].Kplus * std::exp((lastSpkTime - time) * tau_plus_inv) + 1.0;
+                                    ep_i[adr].input += ep_j[j].link.info[i].weight;
+                                } */
         }
     };
 };
