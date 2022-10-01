@@ -7,17 +7,17 @@ class syn_static
 {
 public:
     constexpr static const CX::F64 delay = params::delay;
-    struct Link
-    {
-        CX::S32 target;
-        CX::F32 weight;
-        Link(){};
-        Link(const CX::S32 _target, const CX::F32 _weight)
-            : target(_target),
-              weight(_weight){};
-    };
     struct LinkInfo
     {
+        struct Link
+        {
+            CX::S32 target;
+            CX::F32 weight;
+            Link(){};
+            Link(const CX::S32 _target, const CX::F32 _weight)
+                : target(_target),
+                  weight(_weight){};
+        };
         CX::S32 n_link;
         Link *info;
         void init(const CX::S32 num)
@@ -78,18 +78,19 @@ public:
     public:
         CalcInteraction(const CX::F64 _weight)
             : weight(_weight){};
-        void operator()(Post *const ep_i, const CX::S32 Nip,
-                        Synapse *const ep_j, const CX::S32 Njp)
+        void operator()(Post *const ep_i, const CX::S32 begin_i, const CX::S32 end_i,
+                        const Synapse *const ep_j, const CX::S32 Njp)
         {
             for (CX::S32 j = 0; j < Njp; j++)
-#ifdef CORTEX_THREAD_PARALLEL
-#pragma omp parallel for
-#endif
+            {
+                const CX::S32 lo = LFsearch(ep_j[j].link.info, ep_j[j].link.n_link, begin_i);
+                const CX::S32 hi = RHsearch(ep_j[j].link.info, ep_j[j].link.n_link, end_i);
                 for (CX::S32 i = 0; i < ep_j[j].link.n_link; i++)
                 {
                     const CX::S32 adr = ep_j[j].link.link[i];
                     // ep_i[adr].input += ep_j[j].link.weight[i];
                 }
+            }
         }
     };
 };

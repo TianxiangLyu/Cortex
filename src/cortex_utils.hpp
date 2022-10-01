@@ -1,6 +1,42 @@
 #pragma once
 #include <unistd.h>
 namespace CX = Cortex;
+template <class Tlink>
+inline CX::S32 LFsearch(Tlink *info, CX::S32 num, CX::S32 target)
+{
+    CX::S32 lo = 0;
+    CX::S32 hi = num - 1;
+    while (hi - lo > 1)
+    {
+        CX::S32 mid = (hi + lo) / 2;
+        if (info[mid].target < target)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    if (info[lo].target >= target)
+        return lo;
+    else
+        return hi;
+}
+template <class Tlink>
+inline CX::S32 RHsearch(Tlink *info, CX::S32 num, CX::S32 target)
+{
+    CX::S32 lo = 0;
+    CX::S32 hi = num - 1;
+    while (hi - lo > 1)
+    {
+        CX::S32 mid = (hi + lo) / 2;
+        if (info[mid].target > target)
+            hi = mid - 1;
+        else
+            lo = mid;
+    }
+    if (info[hi].target <= target)
+        return hi;
+    else
+        return lo;
+}
 class FileHeader
 {
 public:

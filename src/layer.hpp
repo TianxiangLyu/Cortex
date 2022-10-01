@@ -121,8 +121,9 @@ namespace Cortex
         {
             spk_tot_.clear();
             spk_tot_.shrink_to_fit();
+            Comm::barrier();
         }
-        void Update(const F64 time)
+        void SpikeUpdate(const F64 time)
         {
             queue_.PopSpk(time, dst_dinfo_);
             queue_.PushSpk(time, neuron_, dst_dinfo_);
@@ -141,11 +142,15 @@ namespace Cortex
         void SpkAllGather()
         {
             const S32 n_loc = neuron_.getNumberOfParticleLocal();
-            std::vector<Tspk> spk_loc;
-            spk_loc.reserve(n_loc);
-            for (S32 i = 0; i < n_loc; i++)
+            if(dst_dinfo_.getCommInfo().isNotCommNull())
+            {
+                std::vector<Tspk> spk_loc;
+                spk_loc.reserve(n_loc);
+                for (S32 i = 0; i < n_loc; i++)
                 spk_loc.push_back(Tspk(neuron_[i]));
-            dst_dinfo_.getCommInfo().allGatherVAll(spk_loc, spk_loc.size(), spk_tot_);
+                dst_dinfo_.getCommInfo().allGatherVAll(spk_loc, spk_loc.size(), spk_tot_);
+            }
+            Comm::barrier();
         }
         void setNeuronID()
         {
@@ -183,7 +188,7 @@ namespace Cortex
             pfunc_stream(neuron_);
         }
         template <class Tfunc_dyn>
-        void CalcDynamics(Tfunc_dyn pfunc_dyn)
+        void NeuralDynamics(Tfunc_dyn pfunc_dyn)
         {
             const F64 time_offset = GetWtime();
             pfunc_dyn(neuron_);

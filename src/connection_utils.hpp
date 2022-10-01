@@ -1,279 +1,134 @@
 #include <cortex.hpp>
 namespace CX = Cortex;
-class LinkPseudoRandomEPIGauss2D
+enum Multapses
+{
+    Multapses_YES,
+    Multapses_NO,
+};
+enum Autapses
+{
+    Autapses_YES,
+    Autapses_NO,
+};
+class SetIndegree
 {
 private:
-    const CX::F32 sigma_x;
-    const CX::F32 sigma_y;
-    const CX::F32 mean_x;
-    const CX::F32 mean_y;
-    const CX::F32 rho;
-    const CX::F32 c;
-    const CX::F32 inv_sigma_x2;
-    const CX::F32 inv_sigma_y2;
-    const CX::F32 inv_sigma_xy;
+    const CX::S32 indegree;
+    const Multapses multapses;
+    const Autapses autapses;
 
 public:
-    LinkPseudoRandomEPIGauss2D(CX::F32 _sigma_x, CX::F32 _sigma_y,
-                               CX::F32 _mean_x, CX::F32 _mean_y,
-                               CX::F32 _rho, CX::F32 _c)
-        : sigma_x(_sigma_x),
-          sigma_y(_sigma_y),
-          mean_x(_mean_x),
-          mean_y(_mean_y),
-          rho(_rho),
-          c(_c),
-          inv_sigma_x2(1.0 / (_sigma_x * _sigma_x)),
-          inv_sigma_y2(1.0 / (_sigma_y * _sigma_y)),
-          inv_sigma_xy(1.0 / (_sigma_x * _sigma_y)){};
-    template <class Tepi, class Tepj>
-    CX::S32 operator()(const Tepi &ep_i,
-                    const Tepj &ep_j)
+    SetIndegree(const CX::S32 _indegree, const Multapses _multapses, const Autapses _autapses)
+        : indegree(_indegree),
+          multapses(_multapses),
+          autapses(_autapses){};
+    template <class TLinkInfo, class TPost, class TSpike>
+    inline void operator()(std::vector<TLinkInfo> &epj_link,
+                           std::vector<TPost> &epi_org,
+                           const std::vector<TSpike> &spk_tot)
     {
-        const CX::F32 dx = fabs(ep_j.pos.x - ep_i.pos.x);
-        const CX::F32 dy = fabs(ep_j.pos.y - ep_i.pos.y);
-        const CX::F32 r2 = dx * dx + dy * dy;
-        const CX::F32 A = (dx - mean_x) * (dx - mean_x) / (sigma_x * sigma_x);
-        const CX::F32 B = (dy - mean_y) * (dy - mean_y) / (sigma_y * sigma_y);
-        const CX::F32 C = 2 * rho * (dx - mean_x) * (dy - mean_y) / (sigma_x * sigma_y);
-        const CX::F32 D = 2 * (1 - rho * rho);
-        const CX::F32 gauss2D = c + ep_i.peak * expf(-(A - B + C) / D);
-        const CX::S32 combined_seed = ep_i.randSeed * ep_j.randSeed + 12345;
-        const CX::S32 random_connection = (combined_seed / 65536) % 32768; // RandMax assumed to be 32767
-        return (r2 <= ep_i.Rsearch * ep_i.Rsearch && gauss2D * 32767 >= random_connection);
-    }
-};
-class LinkPseudoRandomEPIGauss2D_peak
-{
-private:
-    const CX::F32 sigma_x;
-    const CX::F32 sigma_y;
-    const CX::F32 mean_x;
-    const CX::F32 mean_y;
-    const CX::F32 rho;
-    const CX::F32 c;
-    const CX::F32 inv_sigma_x2;
-    const CX::F32 inv_sigma_y2;
-    const CX::F32 inv_sigma_xy;
-
-public:
-    LinkPseudoRandomEPIGauss2D_peak(CX::F32 _sigma_x, CX::F32 _sigma_y,
-                                    CX::F32 _mean_x, CX::F32 _mean_y,
-                                    CX::F32 _rho, CX::F32 _c)
-        : sigma_x(_sigma_x),
-          sigma_y(_sigma_y),
-          mean_x(_mean_x),
-          mean_y(_mean_y),
-          rho(_rho),
-          c(_c),
-          inv_sigma_x2(1.0 / (_sigma_x * _sigma_x)),
-          inv_sigma_y2(1.0 / (_sigma_y * _sigma_y)),
-          inv_sigma_xy(1.0 / (_sigma_x * _sigma_y)){};
-    template <class Tepi, class Tepj>
-    CX::S32 operator()(const Tepi &ep_i,
-                    const Tepj &ep_j,
-                    const CX::F32 peak)
-    {
-        const CX::F32 dx = fabs(ep_j.pos.x - ep_i.pos.x);
-        const CX::F32 dy = fabs(ep_j.pos.y - ep_i.pos.y);
-        const CX::F32 r2 = dx * dx + dy * dy;
-        const CX::F32 A = (dx - mean_x) * (dx - mean_x) / (sigma_x * sigma_x);
-        const CX::F32 B = (dy - mean_y) * (dy - mean_y) / (sigma_y * sigma_y);
-        const CX::F32 C = 2 * rho * (dx - mean_x) * (dy - mean_y) / (sigma_x * sigma_y);
-        const CX::F32 D = 2 * (1 - rho * rho);
-        const CX::F32 gauss2D = c + peak * expf(-(A - B + C) / D);
-        const CX::S32 combined_seed = ep_i.randSeed * ep_j.randSeed + 12345;
-        const CX::S32 random_connection = (combined_seed / 65536) % 32768; // RandMax assumed to be 32767
-        return (r2 <= ep_i.Rsearch * ep_i.Rsearch && gauss2D * 32767 >= random_connection);
-    }
-};
-class LinkIDG_peak
-{
-public:
-    template <class Tepi, class Tepj>
-    CX::S32 operator()(const Tepi &ep_i,
-                    const Tepj &ep_j,
-                    const CX::F64 peak)
-    {
-        if(peak == 0)
-            return 0;
-        const CX::F32 dx = ep_j.pos.x - ep_i.pos.x;
-        const CX::F32 dy = ep_j.pos.y - ep_i.pos.y;
-        const CX::F32 r2 = dx * dx + dy * dy;
-        const CX::S32 combined_seed = ep_i.randSeed * ep_j.randSeed + 12345;
-        const CX::F64 random_connection = (combined_seed / 65536) % 32768; // RandMax assumed to be 32767
-        return (r2 <= ep_i.Rsearch * ep_i.Rsearch && peak * (CX::F64)32767.0 >= random_connection);
-    }
-};
-class connectionEstimateIDG
-{
-private:
-    const CX::S32 indegree_;
-public:
-    connectionEstimateIDG(const CX::S32 indegree)
-        : indegree_(indegree){};
-    template <typename Tepi, typename Tepj>
-    CX::U64 operator()(const Tepi *const ep_i, const CX::S32 Nip,
-                       const Tepj *const ep_j, const CX::S32 Njp,
-                       const typename CX::F32 *const peak)
-    {
-        return Nip * indegree_;
-    }
-};
-class ConnectionEstimateIDG
-{
-private:
-    const CX::S32 indegree_;
-public:
-    ConnectionEstimateIDG(const CX::S32 indegree)
-        : indegree_(indegree){};
-    template <typename Tepi, typename Tepj>
-    CX::S32 operator()(const Tepi *const ep_i, const CX::S32 Nip,
-                       const Tepj *const ep_j, const CX::S32 Njp)
-    {
-        return Nip * indegree_;
-    }
-};
-template <class Tfunc_link, class Tfunc_weight>
-class WeightDefaultLink
-{
-private:
-    Tfunc_link isLink;
-    Tfunc_weight getWeight;
-
-public:
-    WeightDefaultLink(Tfunc_link _isLink,
-                      Tfunc_weight _getWeight)
-        : isLink(_isLink),
-          getWeight(_getWeight){};
-    WeightDefaultLink(){};
-    template <class Tepi, class Tepj>
-    void operator()(Tepi *const ep_i, const CX::S32 Nip,
-                    Tepj *const ep_j, const CX::S32 Njp)
-    {
-        for (CX::S32 j = 0; j < Njp; j++)
+        if (epi_org.size() == 0)
+            return;
+        const CX::S32 n_threads = CX::Comm::getNumberOfThread();
+        const CX::S32 n_epi = epi_org.size();
+        const CX::S32 n_epj = epj_link.size();
+        std::vector<CX::S32> link_num(n_epj, 0);
+        std::vector<CX::S32> ptr(n_epj, 0);
+#ifdef CORTEX_THREAD_PARALLEL
+        std::vector<omp_lock_t> lock(n_epj);
+        for (CX::S32 j = 0; j < n_epj; j++)
+            omp_init_lock(&(lock[j]));
+#endif
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel
+#endif
         {
-            ep_j[j].num_link = 0;
-            for (CX::S32 i = 0; i < Nip; i++)
-                if (isLink(ep_i[i], ep_j[j]))
+            const CX::S32 ith = CX::Comm::getThreadNum();
+            std::vector<CX::S32> link_num_ith(n_epj, 0);
+            std::uniform_int_distribution<CX::S32> distr(0, n_epj - 1);
+            std::default_random_engine test(epi_org[0].randSeed);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+            for (CX::S32 i = 0; i < n_epi; i++)
+            {
+                std::default_random_engine eng(epi_org[i].randSeed);
+                for (CX::S32 j = 0; j < indegree; j++)
                 {
-                    ep_j[j].num_link++;
-                    ep_j[j].link.push_back(i);
-                    ep_j[j].weight.push_back(getWeight(ep_i[i], ep_j[j]));
+                    CX::S32 adr = distr(eng);
+                    if (autapses == Autapses::Autapses_NO)
+                        while (adr == epi_org[i].id)
+                            adr = distr(eng);
+                    link_num_ith[adr]++;
                 }
-        }
+            }
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp critical
+#endif
+            for (CX::S32 j = 0; j < n_epj; j++)
+                link_num[j] += link_num_ith[j];
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp barrier // important
+#endif
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+            for (CX::S32 j = 0; j < n_epj; j++)
+                epj_link[j].init(link_num[j]);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+            for (CX::S32 i = 0; i < n_epi; i++)
+            {
+                std::default_random_engine eng(epi_org[i].randSeed);
+                for (CX::S32 j = 0; j < indegree; j++)
+                {
+                    CX::S32 adr = distr(eng);
+                    if (autapses == Autapses::Autapses_NO)
+                        while (adr == epi_org[i].id)
+                            adr = distr(eng);
+#ifdef CORTEX_THREAD_PARALLEL
+                    omp_set_lock(&(lock[adr]));
+#endif
+                    epj_link[adr].setLink(ptr[adr], i);
+                    ptr[adr]++;
+#ifdef CORTEX_THREAD_PARALLEL
+                    omp_unset_lock(&(lock[adr]));
+#endif
+                }
+            }
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+            for (CX::S32 j = 0; j < n_epj; j++)
+                std::sort(epj_link[j].info, epj_link[j].info + epj_link[j].n_link,
+                          [](const typename TLinkInfo::Link &l, const typename TLinkInfo::Link &r)
+                              -> bool
+                          { return l.target < r.target; });
+        } // end omp
     }
 };
-template <class Tfunc_link, class Tfunc_weight>
-class WeightPseudoRandom
+class SetWeightFixed
 {
 private:
-    Tfunc_link isLink;
-    Tfunc_weight getWeight;
+    const CX::F64 weight;
 
 public:
-    WeightPseudoRandom(Tfunc_link _isLink,
-                       Tfunc_weight _getWeight)
-        : isLink(_isLink),
-          getWeight(_getWeight){};
-    WeightPseudoRandom(){};
-    template <class Tepi, class Tepj>
-    void operator()(Tepi *const ep_i, const CX::S32 Nip,
-                    Tepj *const ep_j, const CX::S32 Njp)
+    SetWeightFixed(const CX::F64 _weight)
+        : weight(_weight){};
+    template <class TLinkInfo, class TPost, class TSpike>
+    inline void operator()(std::vector<TLinkInfo> &epj_link,
+                           std::vector<TPost> &epi_org,
+                           const std::vector<TSpike> &spk_tot)
     {
-        for (CX::S32 j = 0; j < Njp; j++)
-        {
-            ep_j[j].num_link = 0;
-            for (CX::S32 i = 0; i < Nip; i++)
-                ep_j[j].num_link += isLink(ep_i[i], ep_j[j]);
-            ep_j[j].weight.resizeNoInitialize(ep_j[j].num_link);
-            CX::S32 ptr = 0;
-            for (CX::S32 i = 0; i < Nip; i++)
-                if (isLink(ep_i[i], ep_j[j]))
-                    ep_j[j].weight[ptr++] = getWeight(ep_i[i], ep_j[j]);
-        }
-    }
-};
-template <class Tepi, class Tepj, class Tfunc_link_peak>
-class CheckConnectionEPI_peak
-{
-private:
-    Tfunc_link_peak isLink_peak;
-    const Tepi &ep_i;
-    const Tepj *const ep_j;
-    const CX::S32 Njp;
-
-public:
-    CheckConnectionEPI_peak(const Tepi &_epi,
-                            const Tepj *const _ep_j,
-                            const CX::S32 _Njp,
-                            Tfunc_link_peak _isLink_peak)
-        : ep_i(_epi),
-          ep_j(_ep_j),
-          Njp(_Njp),
-          isLink_peak(_isLink_peak){};
-    CX::F64 operator()(const CX::F64 peak)
-    {
-        CX::S32 total_connection = 0;
-        if(peak == 0)
-            return (CX::F64)(0 - ep_i.indegree);
-        for (CX::S32 j = 0; j < Njp; j++)
-            total_connection += isLink_peak(ep_i, ep_j[j], peak);
-        return (CX::F64)(total_connection - ep_i.indegree);
-    }
-};
-template <class Tepi, class Tepj, class Tfunc_link_peak>
-class CountConnectionEPI_peak
-{
-private:
-    Tfunc_link_peak isLink_peak;
-    const Tepi &ep_i;
-    const Tepj *const ep_j;
-    const CX::S32 Njp;
-
-public:
-    CountConnectionEPI_peak(const Tepi &_epi,
-                            const Tepj *const _ep_j,
-                            const CX::S32 _Njp,
-                            Tfunc_link_peak _isLink_peak)
-        : ep_i(_epi),
-          ep_j(_ep_j),
-          Njp(_Njp),
-          isLink_peak(_isLink_peak){};
-    CX::S32 operator()(const CX::F64 peak)
-    {
-        CX::S32 total_connection = 0;
-        for (CX::S32 j = 0; j < Njp; j++)
-            total_connection += isLink_peak(ep_i, ep_j[j], peak);
-        return total_connection;
-    }
-};
-template <class Tfunc_link_peak>
-class BisectionSearchAllEPI_peak
-{
-private:
-    Tfunc_link_peak isLink_peak;
-    const CX::F64 low;
-    const CX::F64 high;
-    const CX::F64 eps;
-
-public:
-    BisectionSearchAllEPI_peak(const CX::F32 _low,
-                               const CX::F32 _high,
-                               const CX::F32 _eps,
-                               Tfunc_link_peak _isLink_peak)
-        : low(_low),
-          high(_high),
-          eps(_eps),
-          isLink_peak(_isLink_peak){};
-    template <class Tepi, class Tepj>
-    void operator()(Tepi *const ep_i, const CX::S32 Nip,
-                    Tepj *const ep_j, const CX::S32 Njp)
-    {
-        for (CX::S32 i = 0; i < Nip; i++)
-        {
-            CheckConnectionEPI_peak<Tepi, Tepj, Tfunc_link_peak> pfunc_check_peak(ep_i[i], ep_j, Njp, isLink_peak);
-            ep_i[i].peak = bisectionSearch(pfunc_check_peak, eps, low, high);
-        }
+        if (epi_org.size() == 0)
+            return;
+        const CX::S32 n_epj = epj_link.size();
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel for
+#endif
+        for (CX::S32 j = 0; j < n_epj; j++)
+            for (CX::S32 i = 0; i < epj_link[j].n_link; i++)
+                epj_link[j].setWeight(i, weight);
     }
 };

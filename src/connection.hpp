@@ -13,9 +13,9 @@ namespace Cortex
         const S32 conn_id_;
         const F64 delay_;
         std::unordered_map<S32, S32> map_id_to_link_;
-        aligned_vector<typename Tsyn::Synapse> epj_act_;
-        aligned_vector<typename Tsyn::LinkInfo> epj_link_;
-        aligned_vector<typename Tsyn::Post> epi_org_; // add Input Channel inside
+        std::vector<typename Tsyn::Synapse> epj_act_;
+        std::vector<typename Tsyn::LinkInfo> epj_link_;
+        std::vector<typename Tsyn::Post> epi_org_; // add Input Channel inside
         DelayQueue<typename Tsrc::Spike> &queue_;
         const std::vector<typename Tsrc::Spike> &spk_tot_;
         NeuronInstance<typename Tdst::Neuron> &dst_neuron_;
@@ -23,19 +23,19 @@ namespace Cortex
     public:
         template <class Tneu_src, class Tspk_src,
                   class Tneu_dst, class Tspk_dst,
-                  class TChannel>
+                  class TChannel, class Tconn_set, class Tweight_set>
         Connection(LayerInfo<Tneu_src, Tspk_src> &src,
                    LayerInfo<Tneu_dst, Tspk_dst> &dst,
-                   TChannel Channel,
-                   F64 delay = Tsyn::delay)
+                   TChannel Channel, Tconn_set conn_set, Tweight_set weight_set)
             : conn_id_(num_conn_glb_++),
-              delay_(delay),
+              delay_(Tsyn::delay),
               queue_(src.queue_),
               spk_tot_(src.spk_tot_),
               dst_neuron_(dst.neuron_)
         {
             const S32 n_epi = dst.getNumLocal();
-            src.addConn(conn_id_, delay, dst.getDinfo());
+            src.addConn(conn_id_, delay_, dst.getDinfo());
+            src.SpkAllGather();
             if (n_epi > 0)
             {
                 epi_org_.reserve(n_epi);
@@ -43,7 +43,10 @@ namespace Cortex
                     epi_org_.push_back(typename Tsyn::Post(dst[i], dst[i].getInput(Channel)));
                 const S32 n_epj = src.getNumGlobal();
                 epj_link_.resize(n_epj);
+                conn_set(epj_link_, epi_org_, spk_tot_);
+                weight_set(epj_link_, epi_org_, spk_tot_);
             }
+            src.freeSpkAll();
             // std::cout<<"Rank "<<Comm::getRank()<<" epi_org_.size() "<<epi_org_.size()<<std::endl;
         };
         void setEPJAct(const F64 time)
@@ -80,8 +83,17 @@ namespace Cortex
             for (S32 i = 0; i < dst_neuron_.getNumberOfParticleLocal(); i++)
                 if (dst_neuron_[i].spike)
                     epi_org_[i].updateSpk(time);
-            pfunc_ep_ep(epi_org_.data(), epi_org_.size(),
-                        epj_act_.data(), epj_act_.size());
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel
+#endif
+            {
+                const CX::S32 ith = CX::Comm::getThreadNum();
+                const CX::S32 nth = CX::Comm::getNumThreads();
+                const CX::S32 begin_i = (epi_org_.size() / nth + 1) * ith;
+                const CX::S32 end_i = (epi_org_.size() / nth + 1) * (ith + 1);
+                pfunc_ep_ep(epi_org_.data(), begin_i, end_i,
+                            epj_act_.data(), epj_act_.size());
+            }
         }
         void PostSpk(const F64 time, const F64 dt)
         {
@@ -163,7 +175,7 @@ namespace Cortex
 #endif
                 for (S32 j = 0; j < n_epj; j++)
                     std::sort(epj_link_[j].info, epj_link_[j].info + epj_link_[j].n_link,
-                              [](const typename Tsyn::Link &l, const typename Tsyn::Link &r)
+                              [](const typename Tsyn::LinkInfo::Link &l, const typename Tsyn::LinkInfo::Link &r)
                                   -> bool
                               { return l.target < r.target; });
             } // end omp
@@ -297,7 +309,7 @@ namespace Cortex
 #endif
                 for (S32 j = 0; j < n_epj; j++)
                     std::sort(epj_link_[j].info, epj_link_[j].info + epj_link_[j].n_link,
-                              [](const typename Tsyn::Link &l, const typename Tsyn::Link &r)
+                              [](const typename Tsyn::LinkInfo::Link &l, const typename Tsyn::LinkInfo::Link &r)
                                   -> bool
                               { return l.target < r.target; });
             } // end omp

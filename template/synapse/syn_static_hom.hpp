@@ -7,15 +7,15 @@ class syn_static_hom
 {
 public:
     constexpr static const CX::F64 delay = params::delay;
-    struct Link
+    struct LinkInfo
+    {
+        struct Link
     {
         CX::S32 target;
         Link(){};
         Link(const CX::S32 _target)
             : target(_target){};
     };
-    struct LinkInfo
-    {
         CX::S32 n_link;
         Link *info;
         void init(const CX::S32 num)
@@ -84,26 +84,17 @@ public:
     public:
         CalcInteraction(const CX::F64 _weight)
             : weight(_weight){};
-        void operator()(Post *const ep_i, const CX::S32 Nip,
-                        Synapse *const ep_j, const CX::S32 Njp)
+        inline void operator()(Post *const ep_i, const CX::S32 begin_i, const CX::S32 end_i,
+                               const Synapse *const ep_j, const CX::S32 Njp)
         {
-#ifdef CORTEX_THREAD_PARALLEL
-#pragma omp parallel
-#endif
+            for (CX::S32 j = 0; j < Njp; j++)
             {
-                const CX::S32 ith = CX::Comm::getThreadNum();
-                const CX::S32 nth = CX::Comm::getNumThreads();
-                const CX::S32 i_start = (Nip / nth + 1) * ith;
-                const CX::S32 i_end = (Nip / nth + 1) * (ith + 1);
-                for (CX::S32 j = 0; j < Njp; j++)
+                const CX::S32 lo = LFsearch(ep_j[j].link.info, ep_j[j].link.n_link, begin_i);
+                const CX::S32 hi = RHsearch(ep_j[j].link.info, ep_j[j].link.n_link, end_i);
+                for (CX::S32 i = lo; i <= hi; i++)
                 {
-                    const CX::S32 lo = LFsearch(ep_j[j].link.info, ep_j[j].link.n_link, i_start);
-                    const CX::S32 hi = RHsearch(ep_j[j].link.info, ep_j[j].link.n_link, i_end);
-                    for (CX::S32 i = lo; i <= hi; i++)
-                    {
-                        const CX::S32 adr = ep_j[j].link.info[i].target;
-                        ep_i[adr].input += weight;
-                    }
+                    const CX::S32 adr = ep_j[j].link.info[i].target;
+                    ep_i[adr].input += weight;
                 }
             }
         }
