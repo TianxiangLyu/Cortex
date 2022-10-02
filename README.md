@@ -2,11 +2,17 @@
 
 Cortex is a high-performance framework for computational neuroscience
 
+## To Do
+
+Short-term (Tsodyks & Markram) and Long-term Plasticity Driven E-I Balanced Networks  
+
+Heterogeneous Computing Implementation  
+
 ## HPC Benchmark
 
 A program of balanced random network with spike-timing-dependent plasticity equivalent to [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) in [NEST](https://github.com/nest/nest-simulator)
 
-The average firing rates might be a little higher because [precise spiking-times approaches](https://nest-simulator.readthedocs.io/en/v3.3/guides/simulations_with_precise_spike_times.html?highlight=precise%20spike) with slightly overhead are adopted as default in Cortex.  
+The average firing rates might be a little higher because [precise spiking-times approaches](https://nest-simulator.readthedocs.io/en/v3.3/guides/simulations_with_precise_spike_times.html?highlight=precise%20spike) are adopted as default in Cortex.  
 Please replace "iaf_psc_alpha" with "iaf_psc_alpha_ps" and "poisson_generator" with "poisson_generator_ps" in [hpc_benchmark.py](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) for comparison with the same resolution.  
 
 References  
@@ -33,15 +39,15 @@ Repalce "world_group" with an specific MPI_Group in the constructor of layers.
 (line 134 ./hpc_benchmark/main.cpp) 
 
 ```
-CX::Layer<iaf>::Default L1e("L1e", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NE), world_group);
+CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
 ```
 Using a modified MPI_Group to determine the layer allocation on specific processes.  
 ("world_group" above has been replaced by "spec_group") 
 ```
-CX::Layer<iaf>::Default L1e("L1e", CX::BOUNDARY_CONDITION_OPEN, NeuronDistrInitUniform2D(CX::F64vec(0), 0.5 * size_scale, NE), spec_group);
+CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), spec_group);
 ```
 
 The load balance scheme with its related codes is based on Multi-section Division Method from FDPS  
 (see, https://github.com/FDPS/FDPS/blob/master/LICENSE)
 
-Email:  tianxianglyu at icloud.com  (please replace at by @)
+Email:  lvtx at sysu.edu.cn  (please replace at by @)
