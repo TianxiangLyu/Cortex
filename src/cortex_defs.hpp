@@ -1784,7 +1784,7 @@ namespace Cortex
         if (Comm::getRank() == 0)
         {
             std::cerr << "Home   : https://github.com/TianxiangLyu/Cortex " << std::endl;
-            std::cerr << "E-mail : tianxianglyu@icloud.com " << std::endl;
+            std::cerr << "E-mail : lvtx@sysu.edu.cn " << std::endl;
             std::cerr << "Licence: MIT (see, https://github.com/TianxiangLyu/Cortex/blob/main/LICENSE) " << std::endl;
         }
     }
