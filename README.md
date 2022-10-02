@@ -1,6 +1,6 @@
 # Cortex
 
-Cortex is a high-performance framework for large scale neuroscientific simulations. In the [HPC Benchmark](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) on mainstream scientific computing clusters, Cortex with precise spike times runs more than 4 orders-of-magnitude faster than [NEST](https://github.com/nest/nest-simulator), however, which is not in [precise spiking times](https://nest-simulator.readthedocs.io/en/v3.3/guides/simulations_with_precise_spike_times.html?highlight=precise%20spike) mode, and reduce 80% memory consumption in maximum.  
+Cortex is a high-performance framework of distributed parallel computation for large scale neuroscientific simulations. In the [HPC Benchmark](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) on mainstream scientific computing clusters, Cortex with precise spike times runs more than 4 orders-of-magnitude faster than [NEST](https://github.com/nest/nest-simulator), however, which is not in [precise spiking times](https://nest-simulator.readthedocs.io/en/v3.3/guides/simulations_with_precise_spike_times.html?highlight=precise%20spike) mode, and reduce 80% memory consumption in maximum.  
 
 More details in [Report.pdf](https://github.com/TianxiangLyu/Cortex/blob/main/Report.pdf)
 
