@@ -1,12 +1,12 @@
 # Cortex
 
-Cortex is a high-performance framework for computational neuroscience
+Cortex is a high-performance framework for computational neuroscience. In the [HPC Benchmark](https://github.com/nest/nest-simulator/blob/master/pynest/examples/hpc_benchmark.py) on mainstream scientific computing environments, Cortex with precise spike times runs more than 4 orders-of-magnitude faster than [NEST](https://github.com/nest/nest-simulator), however, not in [precise spiking times](https://nest-simulator.readthedocs.io/en/v3.3/guides/simulations_with_precise_spike_times.html?highlight=precise%20spike) mode, and reduce 80% memory consumption in maximum.  
+
+More details in Report.pdf
 
 ## To Do
 
-Short-term (Tsodyks & Markram) and Long-term Plasticity Driven E-I Balanced Networks  
-
-Heterogeneous Computing Implementation  
+Short-term (Tsodyks & Markram) Plasticity Driven E-I Balanced Networks    
 
 ## HPC Benchmark
 
