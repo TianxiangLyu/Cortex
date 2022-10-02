@@ -85,9 +85,8 @@ inline void PoissonStimulus(Tlayer &layer,
 #endif
         {
             std::random_device rd;
-            const CX::F64 ratio = 1e-3 * dt;
             std::default_random_engine eng(rd());
-            std::poisson_distribution<CX::S64> d(rate * ratio);
+            std::poisson_distribution<CX::S64> d(rate * 1e-3 * dt);
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp for
 #endif
