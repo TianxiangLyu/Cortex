@@ -193,7 +193,6 @@ namespace Cortex
         }
 #endif
         DomainInfo()
-            : comm_info_()
         {
             first_call_by_initialize = true;
             first_call_by_decomposeDomain = true;
@@ -216,9 +215,9 @@ namespace Cortex
             boundary_condition_ = BOUNDARY_CONDITION_OPEN;
             initialize();
         };
-        DomainInfo(MPI_Group group)
-            : comm_info_(group)
+        void initGroup(MPI_Group group)
         {
+            comm_info_.initGroup(group);
             first_call_by_initialize = true;
             first_call_by_decomposeDomain = true;
             pos_sample_tot_.setAllocMode(MemoryAllocMode::Pool);
@@ -239,6 +238,10 @@ namespace Cortex
 #endif
             boundary_condition_ = BOUNDARY_CONDITION_OPEN;
             initialize();
+        }
+        DomainInfo(MPI_Group group)
+        {
+            initGroup(group);
         };
         ~DomainInfo()
         {

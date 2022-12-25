@@ -1,6 +1,6 @@
 #pragma once
 #include <cortex_defs.hpp>
-#include <layer.hpp>
+#include <population.hpp>
 #include <aligned_container.hpp>
 #include <connection.hpp>
 #include <random>

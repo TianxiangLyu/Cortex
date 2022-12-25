@@ -762,6 +762,13 @@ namespace Cortex
             setCommunicator();
             setGroup();
         };
+        void initGroup(MPI_Group group)
+        {
+            MPI_Comm c;
+            MPI_Comm_create_group(MPI_COMM_WORLD, group, 0, &c);
+            setCommunicator(c);
+            setGroup(group);
+        }
         CommInfo(MPI_Group group)
         {
             MPI_Comm c;

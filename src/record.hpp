@@ -1,6 +1,6 @@
 #include <vector>
 #include <cortex_defs.hpp>
-#include <layer.hpp>
+#include <population.hpp>
 namespace Cortex
 {
     enum RECORD_SELECT_MODE
@@ -15,7 +15,7 @@ namespace Cortex
 
     public:
         template <class Tneu, class Tspk>
-        Recorder(LayerInfo<Tneu, Tspk> &src,
+        Recorder(PopulationInfo<Tneu, Tspk> &src,
                  const S32 record_num,
                  const RECORD_SELECT_MODE mode = RECORD_SELECT_MODE::SERIAL){
 

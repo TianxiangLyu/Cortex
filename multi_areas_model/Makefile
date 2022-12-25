@@ -23,7 +23,7 @@ LIBS += -lomp
 
 CPPOBJS = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 CPPHDRS = $(wildcard *.h)
-PROGRAM = hpc_bencmark.out
+PROGRAM = multi_areas_model.out
 
 .PHONY:	clean all
 
@@ -47,10 +47,10 @@ distclean: clean
 	rm -rf result
 
 aps:
-	mpirun -hostfile mfile aps ./hpc_bencmark.out -z 400 -p 0 -s 500
+	mpirun -hostfile mfile aps ./multi_areas_model.out -z 400 -p 0 -s 500
 
 run:
-	mpirun -hostfile mfile ./hpc_bencmark.out -z 100 -p 0 -s 500
+	mpirun -hostfile mfile ./multi_areas_model.out -z 100 -p 0 -s 500
 
 survey:
 	rm -rf adv_result/

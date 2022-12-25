@@ -193,8 +193,8 @@ int main(int argc, char *argv[])
     typedef stdp_pl_synapse_hom<stdp_params> stdp;
     typedef syn_static_hom<syn_params> syn;
 
-    CX::Layer<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
-    CX::Layer<iaf_psc>::Default L1i("L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
+    CX::Population<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
+    CX::Population<iaf_psc>::Default L1i("L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
     // Using a specific MPI_Group to determine the layer allocation on specific processes.
     CX::Connection<iaf_psc, stdp, iaf_psc> L1e_to_L1e(L1e, L1e, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_NO), SetWeightFixed(JE_pA));
     CX::Connection<iaf_psc, syn, iaf_psc> L1e_to_L1i(L1e, L1i, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_YES), SetWeightFixed(JE_pA));

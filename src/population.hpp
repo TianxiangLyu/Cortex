@@ -12,18 +12,18 @@
 #include <algorithm>
 #include <delay_queue.hpp>
 #include <delay_rma_queue.hpp>
-#include <layer_utils.hpp>
+#include <population_utils.hpp>
 namespace Cortex
 {
-    static std::unordered_map<std::string, S32> name_to_layer_id_glb_;
-    static S32 num_layer_glb_ = 0;
+    static std::unordered_map<std::string, S32> name_to_population_id_glb_;
+    static S32 num_population_glb_ = 0;
     template <class Tneu,
               class Tspk>
-    class LayerInfo // need a new API for system information dump
+    class PopulationInfo // need a new API for system information dump
     {
     private:
-        const S32 layer_id_;
-        const std::string layer_name_;
+        S32 population_id_;
+        std::string population_name_;
 
     public:
         LayerTimeProfile time_profile;
@@ -33,51 +33,21 @@ namespace Cortex
         // DelayRmaQueue<Tspk> rma_queue_;
         DstDomainInfo dst_dinfo_;
         std::vector<Tspk> spk_tot_;
-        ~LayerInfo(){};
-        LayerInfo(const LayerInfo &);
+        ~PopulationInfo(){};
+        PopulationInfo(const PopulationInfo &);
+        PopulationInfo(){};
         Tneu &operator[](const int i) { return neuron_[i]; }
         template <class Tfunc_init>
-        LayerInfo(const std::string layer_name,
-                  const BOUNDARY_CONDITION bc,
-                  Tfunc_init func_init) // should return the pos root domain
-            : dinfo_(),
-              neuron_(),
-              layer_name_(layer_name),
-              layer_id_(num_layer_glb_++)
-        // rma_queue_(dst_dinfo_)
+        void initialize(const std::string population_name,
+                        const BOUNDARY_CONDITION bc,
+                        Tfunc_init func_init,
+                        MPI_Group group)
         {
-            checkLayerName(layer_name); // couldn't ganrantee thread safe here
-            dinfo_.setBoundaryCondition(bc);
-            const F64ort pos_root_domain = func_init(neuron_);
-            dinfo_.setPosRootDomain(pos_root_domain.low_, pos_root_domain.high_); // useless for BOUNDARY_OPEN
-            dinfo_.decomposeDomainAll(neuron_);
-            neuron_.exchangeParticle(dinfo_);
-            std::random_device rd;
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<S32> distr(1, 4 * neuron_.getNumberOfParticleGlobal());
-            for (S32 i = 0; i < neuron_.getNumberOfParticleLocal(); i++)
-            {
-                const S32 rand_seed = distr(eng);
-                neuron_[i].init(rand_seed);
-            }
-            setNeuronID();
-            dst_dinfo_.setSrcInfo(dinfo_);
-            const S64 n_tot = getNumGlobal();
-            if (Comm::getRank() == 0)
-                std::cout << "Layer " << layer_name << " Initialization " << n_tot << std::endl;
-        };
-        template <class Tfunc_init>
-        LayerInfo(const std::string layer_name,
-                  const BOUNDARY_CONDITION bc,
-                  Tfunc_init func_init,
-                  MPI_Group group) // should return the pos root domain
-            : dinfo_(group),
-              neuron_(group),
-              layer_name_(layer_name),
-              layer_id_(num_layer_glb_++)
-        // rma_queue_(dst_dinfo_)
-        {
-            checkLayerName(layer_name); // couldn't ganrantee thread safe here
+            dinfo_.initGroup(group);
+            neuron_.initGroup(group);
+            population_name_ = population_name;
+            population_id_ = num_population_glb_++;
+            checkLayerName(population_name); // couldn't ganrantee thread safe here
             dinfo_.setBoundaryCondition(bc);
             const F64ort pos_root_domain = func_init(neuron_);
             dinfo_.setPosRootDomain(pos_root_domain.low_, pos_root_domain.high_); // useless for BOUNDARY_OPEN
@@ -95,24 +65,32 @@ namespace Cortex
             dst_dinfo_.setSrcInfo(dinfo_);
             const S64 n_tot = getNumGlobal();
             if (Comm::getRank() == 0)
-                std::cout << "Layer " << layer_name << " Initialization " << n_tot << std::endl;
+                std::cout << "Population " << population_name << " Initialization " << n_tot << std::endl;
+        }
+        template <class Tfunc_init>
+        PopulationInfo(const std::string population_name,
+                       const BOUNDARY_CONDITION bc,
+                       Tfunc_init func_init,
+                       MPI_Group group) // should return the pos root domain
+        {
+            initialize(population_name, bc, func_init, group);
         };
-        S32 getLayerID() { return layer_id_; }
-        std::string getLayerName() { return layer_name_; }
+        S32 getLayerID() { return population_id_; }
+        std::string getLayerName() { return population_name_; }
         S64 getNumLocal() { return neuron_.getNumberOfParticleLocal(); }
         S64 getNumGlobal() { return neuron_.getNumberOfParticleGlobal(); }
         Tneu *data(const S32 id = 0) const { return neuron_.getParticlePointer(id); }
         DomainInfo &getDinfo() { return dinfo_; }
-        void checkLayerName(const std::string layer_name)
+        void checkLayerName(const std::string population_name)
         {
-            auto search = name_to_layer_id_glb_.find(layer_name);
-            if (search == name_to_layer_id_glb_.end())
+            auto search = name_to_population_id_glb_.find(population_name);
+            if (search == name_to_population_id_glb_.end())
             {
-                name_to_layer_id_glb_.insert(std::pair<std::string, S32>(layer_name, getLayerID()));
+                name_to_population_id_glb_.insert(std::pair<std::string, S32>(population_name, getLayerID()));
             }
             else
             {
-                std::cerr << "Layer name " << layer_name << " has been existed " << std::endl;
+                std::cerr << "Population name " << population_name << " has been existed " << std::endl;
                 std::cerr << "Exist ID " << search->second << " this ID " << getLayerID() << std::endl;
                 Abort(-1);
             }
@@ -142,12 +120,12 @@ namespace Cortex
         void SpkAllGather()
         {
             const S32 n_loc = neuron_.getNumberOfParticleLocal();
-            if(dst_dinfo_.getCommInfo().isNotCommNull())
+            if (dst_dinfo_.getCommInfo().isNotCommNull())
             {
                 std::vector<Tspk> spk_loc;
                 spk_loc.reserve(n_loc);
                 for (S32 i = 0; i < n_loc; i++)
-                spk_loc.push_back(Tspk(neuron_[i]));
+                    spk_loc.push_back(Tspk(neuron_[i]));
                 dst_dinfo_.getCommInfo().allGatherVAll(spk_loc, spk_loc.size(), spk_tot_);
             }
             Comm::barrier();
@@ -196,11 +174,11 @@ namespace Cortex
         }
     };
     template <typename Tntyp>
-    class Layer
+    class Population
     {
     public:
-        typedef LayerInfo<typename Tntyp::Neuron,
-                          typename Tntyp::Spike>
+        typedef PopulationInfo<typename Tntyp::Neuron,
+                               typename Tntyp::Spike>
             Default;
     };
 }

@@ -24,8 +24,8 @@ namespace Cortex
         template <class Tneu_src, class Tspk_src,
                   class Tneu_dst, class Tspk_dst,
                   class TChannel, class Tconn_set, class Tweight_set>
-        Connection(LayerInfo<Tneu_src, Tspk_src> &src,
-                   LayerInfo<Tneu_dst, Tspk_dst> &dst,
+        Connection(PopulationInfo<Tneu_src, Tspk_src> &src,
+                   PopulationInfo<Tneu_dst, Tspk_dst> &dst,
                    TChannel Channel, Tconn_set conn_set, Tweight_set weight_set)
             : conn_id_(num_conn_glb_++),
               delay_(Tsyn::delay),

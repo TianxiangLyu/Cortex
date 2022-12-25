@@ -180,6 +180,15 @@ namespace Cortex
             initialize();
         };
 
+        void initGroup(MPI_Group group)
+        {
+            comm_info_.initGroup(group);
+            first_call_by_setAverageTargetNumberOfSampleParticlePerProcess = true;
+            first_call_by_initialize = true;
+            first_call_by_DomainInfo_collect_sample_particle = true;
+            initialize();
+        }
+
         void initialize(const S32 cap = 10000)
         {
             assert(first_call_by_initialize);
