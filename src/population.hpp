@@ -34,7 +34,6 @@ namespace Cortex
         DstDomainInfo dst_dinfo_;
         std::vector<Tspk> spk_tot_;
         ~PopulationInfo(){};
-        PopulationInfo(const PopulationInfo &);
         PopulationInfo(){};
         Tneu &operator[](const int i) { return neuron_[i]; }
         template <class Tfunc_init>
@@ -45,6 +44,7 @@ namespace Cortex
         {
             dinfo_.initGroup(group);
             neuron_.initGroup(group);
+            dst_dinfo_.initGroup(group);
             population_name_ = population_name;
             population_id_ = num_population_glb_++;
             checkLayerName(population_name); // couldn't ganrantee thread safe here
@@ -67,6 +67,15 @@ namespace Cortex
             if (Comm::getRank() == 0)
                 std::cout << "Population " << population_name << " Initialization " << n_tot << std::endl;
         }
+        template <class Tfunc_init>
+        PopulationInfo(const std::string population_name,
+                       const BOUNDARY_CONDITION bc,
+                       Tfunc_init func_init) // should return the pos root domain
+        {
+            MPI_Group world_group;
+            MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+            initialize(population_name, bc, func_init, world_group);
+        };
         template <class Tfunc_init>
         PopulationInfo(const std::string population_name,
                        const BOUNDARY_CONDITION bc,

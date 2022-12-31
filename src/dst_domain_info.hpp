@@ -53,10 +53,11 @@ namespace Cortex
         F64ort pos_root_domain_;
 
     public:
-        DstDomainInfo()
-            : comm_info_(){};
-        DstDomainInfo(MPI_Group group)
-            : comm_info_(group){};
+        DstDomainInfo(){};
+        void initGroup(MPI_Group group)
+        {
+            comm_info_.initGroup(group);
+        }
         S32 getDstNum() { return dst_pos_info_.size(); }
         DstPosInfo & operator[] (const int i) { return dst_pos_info_[i]; }
         CommInfo getCommInfo() const { return comm_info_; }

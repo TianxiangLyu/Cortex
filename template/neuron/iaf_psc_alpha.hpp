@@ -1,6 +1,7 @@
 #include <cortex.hpp>
 #include <limits>
 #include <stdlib.h>
+#include <cortex_utils.hpp>
 namespace CX = Cortex;
 struct iaf_psc_alpha_default
 {
@@ -16,39 +17,6 @@ struct iaf_psc_alpha_default
     constexpr static const CX::F64 tau_syn_ex = 2.0; // time const. postsynaptic excitatory currents(ms)
     constexpr static const CX::F64 tau_syn_in = 2.0; // time const. postsynaptic inhibitory currents(ms)
 };
-CX::F64 propagator_31(CX::F64 tau_syn, CX::F64 tau, CX::F64 C, CX::F64 h)
-{
-    const CX::F64 P31_linear = 1 / (3. * C * tau * tau) * h * h * h * (tau_syn - tau) * std::exp(-h / tau);
-    const CX::F64 P31 = 1 / C * (std::exp(-h / tau_syn) * std::expm1(-h / tau + h / tau_syn) / (tau / tau_syn - 1) * tau - h * std::exp(-h / tau_syn)) / (-1 - -tau / tau_syn) * tau;
-    const CX::F64 P31_singular = h * h / 2 / C * std::exp(-h / tau);
-    const CX::F64 dev_P31 = std::abs(P31 - P31_singular);
-
-    if (tau == tau_syn or (std::abs(tau - tau_syn) < 0.1 and dev_P31 > 2 * std::abs(P31_linear)))
-    {
-        return P31_singular;
-    }
-    else
-    {
-        return P31;
-    }
-}
-CX::F64 propagator_32(CX::F64 tau_syn, CX::F64 tau, CX::F64 C, CX::F64 h)
-{
-    const CX::F64 P32_linear = 1 / (2. * C * tau * tau) * h * h * (tau_syn - tau) * std::exp(-h / tau);
-    const CX::F64 P32_singular = h / C * std::exp(-h / tau);
-    const CX::F64 P32 = -tau / (C * (1 - tau / tau_syn)) * std::exp(-h / tau_syn) * std::expm1(h * (1 / tau_syn - 1 / tau));
-
-    const CX::F64 dev_P32 = std::abs(P32 - P32_singular);
-
-    if (tau == tau_syn or (std::abs(tau - tau_syn) < 0.1 and dev_P32 > 2 * std::abs(P32_linear)))
-    {
-        return P32_singular;
-    }
-    else
-    {
-        return P32;
-    }
-}
 template <class Tmodel = iaf_psc_alpha_default>
 class iaf_psc_alpha
 {
@@ -344,13 +312,13 @@ public:
                 neuron[i].I_ex_ = exp_tau_syn_ex_ * h_ms_ * neuron[i].dI_ex_ + exp_tau_syn_ex_ * neuron[i].I_ex_;
                 neuron[i].dI_ex_ = exp_tau_syn_ex_ * neuron[i].dI_ex_;
 
-                const CX::F64 weighted_spikes_ex_ = neuron[i].input_ex_;
+                const CX::F64 weighted_spikes_ex_ = neuron[i].input_syn_ex_;
                 neuron[i].dI_ex_ += psc_norm_ex_ * weighted_spikes_ex_;
 
                 neuron[i].I_in_ = exp_tau_syn_in_ * h_ms_ * neuron[i].dI_in_ + exp_tau_syn_in_ * neuron[i].I_in_;
                 neuron[i].dI_in_ = exp_tau_syn_in_ * neuron[i].dI_in_;
 
-                const CX::F64 weighted_spikes_in_ = neuron[i].input_in_;
+                const CX::F64 weighted_spikes_in_ = neuron[i].input_syn_in_;
                 neuron[i].dI_in_ += psc_norm_in_ * weighted_spikes_in_;
 
                 if (neuron[i].y3_ >= Tmodel::V_th)
@@ -360,8 +328,8 @@ public:
                     neuron[i].r_ = Tmodel::t_ref;
                 }
 
-                neuron[i].input_ex_ = 0;
-                neuron[i].input_in_ = 0; // clear input channel
+                neuron[i].input_syn_ex_ = 0;
+                neuron[i].input_syn_in_ = 0; // clear input channel
             }
         }
     };
@@ -419,10 +387,10 @@ public:
             CX::F64 sum_input_inh = 0;
             for (CX::S32 i = 0; i < neuron.getNumberOfParticleLocal(); ++i)
             {
-                sum_input_exc += neuron[i].input_ex_;
-                sum_input_inh += neuron[i].input_in_;
-                neuron[i].input_ex_ = 0;
-                neuron[i].input_in_ = 0;
+                sum_input_exc += neuron[i].input_syn_ex_;
+                sum_input_inh += neuron[i].input_syn_in_;
+                neuron[i].input_syn_ex_ = 0;
+                neuron[i].input_syn_in_ = 0;
             }
             sum_input_exc = CX::Comm::getSum(sum_input_exc);
             sum_input_inh = CX::Comm::getSum(sum_input_inh);

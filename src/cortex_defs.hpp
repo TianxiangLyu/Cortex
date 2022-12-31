@@ -759,9 +759,14 @@ namespace Cortex
 #ifdef CORTEX_MPI_PARALLEL
         CommInfo()
         {
+            //setCommunicator();
+            //setGroup();
+        };
+        void init()
+        {
             setCommunicator();
             setGroup();
-        };
+        }
         void initGroup(MPI_Group group)
         {
             MPI_Comm c;
@@ -769,13 +774,13 @@ namespace Cortex
             setCommunicator(c);
             setGroup(group);
         }
-        CommInfo(MPI_Group group)
+        /* CommInfo(MPI_Group group)
         {
             MPI_Comm c;
             MPI_Comm_create_group(MPI_COMM_WORLD, group, 0, &c);
             setCommunicator(c);
             setGroup(group);
-        };
+        }; */
             /* CommInfo(const MPI_Comm & c = MPI_COMM_NULL)
             {
                 setCommunicator(c);

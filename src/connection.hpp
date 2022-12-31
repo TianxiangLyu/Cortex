@@ -10,29 +10,29 @@ namespace Cortex
     class Connection
     {
     private:
-        const S32 conn_id_;
-        const F64 delay_;
+        S32 conn_id_;
+        F64 delay_;
         std::unordered_map<S32, S32> map_id_to_link_;
         std::vector<typename Tsyn::Synapse> epj_act_;
         std::vector<typename Tsyn::LinkInfo> epj_link_;
         std::vector<typename Tsyn::Post> epi_org_; // add Input Channel inside
-        DelayQueue<typename Tsrc::Spike> &queue_;
-        const std::vector<typename Tsrc::Spike> &spk_tot_;
-        NeuronInstance<typename Tdst::Neuron> &dst_neuron_;
+        DelayQueue<typename Tsrc::Spike> *queue_;
+        std::vector<typename Tsrc::Spike> *spk_tot_;
+        NeuronInstance<typename Tdst::Neuron> *dst_neuron_;
 
     public:
         template <class Tneu_src, class Tspk_src,
                   class Tneu_dst, class Tspk_dst,
                   class TChannel, class Tconn_set, class Tweight_set>
-        Connection(PopulationInfo<Tneu_src, Tspk_src> &src,
-                   PopulationInfo<Tneu_dst, Tspk_dst> &dst,
-                   TChannel Channel, Tconn_set conn_set, Tweight_set weight_set)
-            : conn_id_(num_conn_glb_++),
-              delay_(Tsyn::delay),
-              queue_(src.queue_),
-              spk_tot_(src.spk_tot_),
-              dst_neuron_(dst.neuron_)
+        void initialize(PopulationInfo<Tneu_src, Tspk_src> &src,
+                        PopulationInfo<Tneu_dst, Tspk_dst> &dst,
+                        TChannel Channel, Tconn_set conn_set, Tweight_set weight_set)
         {
+            conn_id_ = num_conn_glb_++;
+            delay_ = Tsyn::delay;
+            queue_ = &src.queue_;
+            spk_tot_ = &src.spk_tot_;
+            dst_neuron_ = &dst.neuron_;
             const S32 n_epi = dst.getNumLocal();
             src.addConn(conn_id_, delay_, dst.getDinfo());
             src.SpkAllGather();
@@ -43,19 +43,28 @@ namespace Cortex
                     epi_org_.push_back(typename Tsyn::Post(dst[i], dst[i].getInput(Channel)));
                 const S32 n_epj = src.getNumGlobal();
                 epj_link_.resize(n_epj);
-                conn_set(epj_link_, epi_org_, spk_tot_);
-                weight_set(epj_link_, epi_org_, spk_tot_);
+                conn_set(epj_link_, epi_org_, *spk_tot_);
+                weight_set(epj_link_, epi_org_, *spk_tot_);
             }
             src.freeSpkAll();
-            // std::cout<<"Rank "<<Comm::getRank()<<" epi_org_.size() "<<epi_org_.size()<<std::endl;
+        }
+        Connection(){};
+        template <class Tneu_src, class Tspk_src,
+                  class Tneu_dst, class Tspk_dst,
+                  class TChannel, class Tconn_set, class Tweight_set>
+        Connection(PopulationInfo<Tneu_src, Tspk_src> &src,
+                   PopulationInfo<Tneu_dst, Tspk_dst> &dst,
+                   TChannel Channel, Tconn_set conn_set, Tweight_set weight_set)
+        {
+            initialize(src, dst, Channel, conn_set, weight_set);
         };
         void setEPJAct(const F64 time)
         {
             if (epi_org_.size() == 0)
                 return;
-            typename std::deque<DelaySlot<typename Tsrc::Spike>>::reverse_iterator slot = queue_.rfind(time, delay_);
+            typename std::deque<DelaySlot<typename Tsrc::Spike>>::reverse_iterator slot = queue_->rfind(time, delay_);
             epj_act_.clear();
-            if (slot != queue_.rend())
+            if (slot != queue_->rend())
             {
                 assert(slot->sync); // synchronized
                 const S32 n_spk = slot->epj_recv_.size();
@@ -80,8 +89,8 @@ namespace Cortex
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp parallel for
 #endif
-            for (S32 i = 0; i < dst_neuron_.getNumberOfParticleLocal(); i++)
-                if (dst_neuron_[i].spike)
+            for (S32 i = 0; i < dst_neuron_->getNumberOfParticleLocal(); i++)
+                if ((*dst_neuron_)[i].spike)
                     epi_org_[i].updateSpk(time);
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp parallel

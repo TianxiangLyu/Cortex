@@ -121,6 +121,16 @@ inline void SetRandomPotential(Tlayer &layer, const CX::F64 mean_potential, cons
             layer[i].y3_ = d(eng);
     }
 }
+typedef iaf_psc_alpha<model_params> iaf_psc;
+typedef stdp_pl_synapse_hom<stdp_params> stdp;
+typedef syn_static_hom<syn_params> syn;
+
+CX::Population<iaf_psc>::Default L1e;
+CX::Population<iaf_psc>::Default L1i;
+CX::Connection<iaf_psc, stdp, iaf_psc> L1e_to_L1e;
+CX::Connection<iaf_psc, syn, iaf_psc> L1e_to_L1i;
+CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1e;
+CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1i;
 int main(int argc, char *argv[])
 {
     CX::Initialize(argc, argv);
@@ -189,21 +199,17 @@ int main(int argc, char *argv[])
     MPI_Group world_group;
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
-    typedef iaf_psc_alpha<model_params> iaf_psc;
-    typedef stdp_pl_synapse_hom<stdp_params> stdp;
-    typedef syn_static_hom<syn_params> syn;
-
-    CX::Population<iaf_psc>::Default L1e("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
-    CX::Population<iaf_psc>::Default L1i("L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
+    L1e.initialize("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
+    L1i.initialize("L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
     // Using a specific MPI_Group to determine the layer allocation on specific processes.
-    CX::Connection<iaf_psc, stdp, iaf_psc> L1e_to_L1e(L1e, L1e, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_NO), SetWeightFixed(JE_pA));
-    CX::Connection<iaf_psc, syn, iaf_psc> L1e_to_L1i(L1e, L1i, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_YES), SetWeightFixed(JE_pA));
-    CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1e(L1i, L1e, iaf_psc::Channel::INH, SetIndegree(CI, Multapses_YES, Autapses_YES), SetWeightFixed(brunel_params::g * JE_pA));
-    CX::Connection<iaf_psc, syn, iaf_psc> L1i_to_L1i(L1i, L1i, iaf_psc::Channel::INH, SetIndegree(CI, Multapses_YES, Autapses_NO), SetWeightFixed(brunel_params::g * JE_pA));
+    L1e_to_L1e.initialize(L1e, L1e, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_NO), SetWeightFixed(JE_pA));
+    L1e_to_L1i.initialize(L1e, L1i, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_YES), SetWeightFixed(JE_pA));
+    L1i_to_L1e.initialize(L1i, L1e, iaf_psc::Channel::INH, SetIndegree(CI, Multapses_YES, Autapses_YES), SetWeightFixed(brunel_params::g * JE_pA));
+    L1i_to_L1i.initialize(L1i, L1i, iaf_psc::Channel::INH, SetIndegree(CI, Multapses_YES, Autapses_NO), SetWeightFixed(brunel_params::g * JE_pA));
 
     SetRandomPotential(L1e, brunel_params::mean_potential, brunel_params::sigma_potential);
     SetRandomPotential(L1i, brunel_params::mean_potential, brunel_params::sigma_potential);
-
+    // V1::setV1();
     CX::S32 step = 1;
     CX::Comm::barrier();
     if (CX::Comm::getRank() == 0)
@@ -217,6 +223,10 @@ int main(int argc, char *argv[])
         L1e_to_L1i.PreAct(time, syn::CalcInteraction(JE_pA));
         L1i_to_L1e.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
         L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
+        /* V1::L1e_to_L1e.PreAct(time, stdp::CalcInteraction(time));
+        V1::L1e_to_L1i.PreAct(time, syn::CalcInteraction(JE_pA));
+        V1::L1i_to_L1e.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
+        V1::L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA)); */
         PoissonStimulus(L1e, time, dt, nu_ext * CE * 1000, JE_pA);
         PoissonStimulus(L1i, time, dt, nu_ext * CE * 1000, JE_pA);
         L1e.NeuralDynamics(iaf_psc::CalcDynamics(time, dt));
@@ -233,6 +243,10 @@ int main(int argc, char *argv[])
         L1e_to_L1i.PreAct(time, syn::CalcInteraction(JE_pA));
         L1i_to_L1e.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
         L1i_to_L1i.PreAct(time, syn::CalcInteraction(brunel_params::g * JE_pA));
+        /* V1::L1e_to_L1e.PreAct(time, stdp::CalcInteraction(time));
+        V1::L1e_to_L1i.PreAct(time, syn::CalcInteraction(1));
+        V1::L1i_to_L1e.PreAct(time, syn::CalcInteraction(-5));
+        V1::L1i_to_L1i.PreAct(time, syn::CalcInteraction(-5)); */
         PoissonStimulus(L1e, time, dt, nu_ext * CE * 1000, JE_pA);
         PoissonStimulus(L1i, time, dt, nu_ext * CE * 1000, JE_pA);
         L1e.NeuralDynamics(iaf_psc::CalcDynamics(time, dt));

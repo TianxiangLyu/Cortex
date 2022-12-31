@@ -17,8 +17,8 @@ CFLAGS += -std=c++11 -Ofast -ffast-math -funroll-loops -gdwarf-4
 CFLAGS += -DCORTEX_TWO_DIMENSION
 CFLAGS += -DCORTEX_MPI_PARALLEL
 #CFLAGS += -DCORTEX_THREAD_PARALLEL -fopenmp
-CFLAGS += -DCORTEX_THREAD_PARALLEL -Xpreprocessor -fopenmp
-LIBS += -lomp
+#CFLAGS += -DCORTEX_THREAD_PARALLEL -Xpreprocessor -fopenmp
+#LIBS += -lomp
 #CFLAGS += -lasan -fsanitize=address
 
 CPPOBJS = $(patsubst %.cpp, %.o, $(wildcard *.cpp))

@@ -163,21 +163,16 @@ namespace Cortex
         }
 #endif
         NeuronInstance()
-            : comm_info_()
         {
-            first_call_by_setAverageTargetNumberOfSampleParticlePerProcess = true;
+            /* first_call_by_setAverageTargetNumberOfSampleParticlePerProcess = true;
             first_call_by_initialize = true;
             first_call_by_DomainInfo_collect_sample_particle = true;
-            initialize();
+            initialize(); */
         };
 
         NeuronInstance(MPI_Group group)
-            : comm_info_(group)
         {
-            first_call_by_setAverageTargetNumberOfSampleParticlePerProcess = true;
-            first_call_by_initialize = true;
-            first_call_by_DomainInfo_collect_sample_particle = true;
-            initialize();
+            initGroup(group);
         };
 
         void initGroup(MPI_Group group)
