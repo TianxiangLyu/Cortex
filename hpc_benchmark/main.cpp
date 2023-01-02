@@ -49,7 +49,7 @@ struct model_params
 {
     constexpr static const CX::F64 tau_m = 10.0;  // Membrane time constant(ms)
     constexpr static const CX::F64 C_m = 250.0;   // Capacity of the membrane(pF)
-    constexpr static const CX::S32 t_ref = 5;     // Duration of refractory period(ms)
+    constexpr static const CX::F64 t_ref = 0.5;     // Duration of refractory period(ms)
     constexpr static const CX::F64 E_L = 0.0;     // Resting membrane potential(mV)
     constexpr static const CX::F64 I_e = 0.0;     // Reset Potential(mV)
     constexpr static const CX::F64 V_reset = 0.0; // mV, rel to E_L
@@ -73,8 +73,8 @@ class syn_params
 public:
     constexpr static const CX::F64 delay = 1.5;
 };
-template <class Tlayer>
-inline void PoissonStimulus(Tlayer &layer,
+template <class Tpopulation>
+inline void PoissonStimulus(Tpopulation &population,
                             const CX::F64 time, const CX::F64 dt,
                             const CX::F64 rate, const CX::F64 weight)
 {
@@ -90,22 +90,22 @@ inline void PoissonStimulus(Tlayer &layer,
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp for
 #endif
-            for (CX::S32 i = 0; i < layer.getNumLocal(); ++i)
-                layer[i].input_ex_ += d(eng) * weight;
+            for (CX::S32 i = 0; i < population.getNumLocal(); ++i)
+                population[i].input_ex_ += d(eng) * weight;
         }
     }
 }
-template <class Tlayer>
-inline void RecordSpikeAll(Tlayer &layer)
+template <class Tpopulation>
+inline void RecordSpikeAll(Tpopulation &population)
 {
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp parallel for
 #endif
-    for (CX::S32 i = 0; i < layer.getNumLocal(); ++i)
-        layer[i].recordSpike();
+    for (CX::S32 i = 0; i < population.getNumLocal(); ++i)
+        population[i].recordSpike();
 }
-template <class Tlayer>
-inline void SetRandomPotential(Tlayer &layer, const CX::F64 mean_potential, const CX::F64 sigma_potential)
+template <class Tpopulation>
+inline void SetRandomPotential(Tpopulation &population, const CX::F64 mean_potential, const CX::F64 sigma_potential)
 {
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp parallel
@@ -117,8 +117,8 @@ inline void SetRandomPotential(Tlayer &layer, const CX::F64 mean_potential, cons
 #ifdef CORTEX_THREAD_PARALLEL
 #pragma omp for
 #endif
-        for (CX::S32 i = 0; i < layer.getNumLocal(); i++)
-            layer[i].y3_ = d(eng);
+        for (CX::S32 i = 0; i < population.getNumLocal(); i++)
+            population[i].y3_ = d(eng);
     }
 }
 typedef iaf_psc_alpha<model_params> iaf_psc;
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 
     L1e.initialize("L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
     L1i.initialize("L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
-    // Using a specific MPI_Group to determine the layer allocation on specific processes.
+    // Using a specific MPI_Group to determine the population allocation on specific processes.
     L1e_to_L1e.initialize(L1e, L1e, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_NO), SetWeightFixed(JE_pA));
     L1e_to_L1i.initialize(L1e, L1i, iaf_psc::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_YES), SetWeightFixed(JE_pA));
     L1i_to_L1e.initialize(L1i, L1e, iaf_psc::Channel::INH, SetIndegree(CI, Multapses_YES, Autapses_YES), SetWeightFixed(brunel_params::g * JE_pA));
