@@ -58,6 +58,18 @@ namespace Cortex
         {
             initialize(src, dst, Channel, conn_set, weight_set);
         };
+        typename Tsyn::Post getEPI(const S32 id) { return epi_org_[id]; }
+        typename Tsyn::LinkInfo &operator[](const S32 id) { return epj_link_[id]; }
+        S64 getNumEPJ() { return epj_link_.size(); }
+        void checkConnTotalNum()
+        {
+            S64 num_tot = 0;
+            for(S32 j = 0; j < epj_link_.size(); j++)
+                num_tot += epj_link_[j].n_link;
+            num_tot = Comm::getSum(num_tot);
+            if(Comm::getRank() == 0)
+                std::cout << "Total Num "<< num_tot << std::endl;
+        }
         void setEPJAct(const F64 time)
         {
             if (epi_org_.size() == 0)
@@ -79,7 +91,6 @@ namespace Cortex
                 std::cout<<std::endl;
             } */
         }
-        typename Tsyn::Post &operator[](const S32 id) { return epi_org_[id]; }
         template <class Tfunc_ep_ep>
         void PreAct(const F64 time, Tfunc_ep_ep pfunc_ep_ep)
         {

@@ -10,6 +10,71 @@ enum Autapses
     Autapses_YES,
     Autapses_NO,
 };
+static CX::S32 global_rand_seed = 1;
+class FixedTotalNumber
+{
+private:
+    const CX::S32 rand_seed; // This var should be the same in all proc to generate the same random sequence
+    const CX::S32 conn_num;
+
+public:
+    FixedTotalNumber(const CX::S32 _conn_num)
+        : rand_seed(global_rand_seed++),
+          conn_num(_conn_num){};
+    FixedTotalNumber(const CX::S32 _conn_num, const CX::S32 _rand_seed)
+        : rand_seed(_rand_seed),
+          conn_num(_conn_num){};
+    template <class TLinkInfo, class TPost, class TSpike>
+    inline void operator()(std::vector<TLinkInfo> &epj_link,
+                           std::vector<TPost> &epi_org,
+                           const std::vector<TSpike> &spk_tot)
+    {
+        if (epi_org.size() == 0)
+            return;
+        const CX::S32 n_threads = CX::Comm::getNumberOfThread();
+        const CX::S32 n_epi = epi_org.size();
+        const CX::S32 n_epj = epj_link.size();
+        std::vector<CX::S32> epi(conn_num);
+        std::vector<CX::S32> epj(conn_num);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp parallel
+#endif
+        {
+            const CX::S32 ith = CX::Comm::getThreadNum();
+            std::vector<CX::S32> ptr;
+            std::default_random_engine eng(rand_seed); // using the same rand seed
+            std::uniform_int_distribution<CX::S32> epi_distr(0, n_epi - 1);
+            std::uniform_int_distribution<CX::S32> epj_distr(0, n_epj - 1);
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+            for (CX::S32 k = 0; k < conn_num; k++)
+            {
+                epi[k] = epi_distr(eng);
+                epj[k] = epj_distr(eng);
+            }
+#ifdef CORTEX_THREAD_PARALLEL
+#pragma omp for
+#endif
+            for (CX::S32 j = 0; j < n_epj; j++)
+            {
+                ptr.clear();
+                for (CX::S32 k = 0; k < conn_num; k++)
+                    if (epj[k] == j)
+                        for (CX::S32 i = 0; i < n_epi; i++)
+                            if (epi_org[i].id == epi[k])
+                                ptr.push_back(i);
+                epj_link[j].init(ptr.size());
+                for (CX::S32 i = 0; i < ptr.size(); i++)
+                    epj_link[j].setLink(i, ptr[i]);
+                std::sort(epj_link[j].info, epj_link[j].info + epj_link[j].n_link,
+                          [](const typename TLinkInfo::Link &l, const typename TLinkInfo::Link &r)
+                              -> bool
+                          { return l.target < r.target; });
+            }
+        }
+    }
+};
 class SetIndegree
 {
 private:

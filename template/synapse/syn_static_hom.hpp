@@ -10,12 +10,12 @@ public:
     struct LinkInfo
     {
         struct Link
-    {
-        CX::S32 target;
-        Link(){};
-        Link(const CX::S32 _target)
-            : target(_target){};
-    };
+        {
+            CX::S32 target;
+            Link(){};
+            Link(const CX::S32 _target)
+                : target(_target){};
+        };
         CX::S32 n_link;
         Link *info;
         void init(const CX::S32 num)

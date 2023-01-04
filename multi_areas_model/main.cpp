@@ -46,7 +46,7 @@ struct model_params
 {
     constexpr static const CX::F64 tau_m = 10.0;  // Membrane time constant(ms)
     constexpr static const CX::F64 C_m = 250.0;   // Capacity of the membrane(pF)
-    constexpr static const CX::F64 t_ref = 0.5;     // Duration of refractory period(ms)
+    constexpr static const CX::F64 t_ref = 0.5;   // Duration of refractory period(ms)
     constexpr static const CX::F64 E_L = 0.0;     // Resting membrane potential(mV)
     constexpr static const CX::F64 I_e = 0.0;     // Reset Potential(mV)
     constexpr static const CX::F64 V_reset = 0.0; // mV, rel to E_L
@@ -74,6 +74,10 @@ CX::Population<iaf_psc_exp<>>::Default L1e;
 CX::Population<iaf_psc_exp<>>::Default L1i;
 typedef stdp_pl_synapse_hom<stdp_params> stdp;
 typedef syn_static_hom<syn_params> syn;
+CX::Connection<iaf_psc_exp<>, syn, iaf_psc_exp<>> L1e_to_L1e;
+CX::Connection<iaf_psc_exp<>, syn, iaf_psc_exp<>> L1e_to_L1i;
+CX::Connection<iaf_psc_exp<>, syn, iaf_psc_exp<>> L1i_to_L1e;
+CX::Connection<iaf_psc_exp<>, syn, iaf_psc_exp<>> L1i_to_L1i;
 template <class Tpopulation>
 inline void PoissonStimulus(Tpopulation &population,
                             const CX::F64 time, const CX::F64 dt,
@@ -190,9 +194,25 @@ int main(int argc, char *argv[])
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     L1e.initialize("V1_L1e", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NE), world_group);
     L1i.initialize("V1_L1i", CX::BOUNDARY_CONDITION_NULL, DistrEqualNullPos(NI), world_group);
+    L1e_to_L1e.initialize(L1e, L1e, iaf_psc_exp<>::Channel::EXC, FixedTotalNumber(100 * CE), SetWeightFixed(JE_pA));
+    L1e_to_L1i.initialize(L1e, L1i, iaf_psc_exp<>::Channel::EXC, SetIndegree(CE, Multapses_YES, Autapses_YES), SetWeightFixed(JE_pA));
+    L1i_to_L1e.initialize(L1i, L1e, iaf_psc_exp<>::Channel::INH, SetIndegree(CI, Multapses_YES, Autapses_YES), SetWeightFixed(brunel_params::g * JE_pA));
+    L1i_to_L1i.initialize(L1i, L1i, iaf_psc_exp<>::Channel::INH, SetIndegree(CI, Multapses_YES, Autapses_NO), SetWeightFixed(brunel_params::g * JE_pA));
+    L1e_to_L1e.checkConnTotalNum();
+    L1e_to_L1i.checkConnTotalNum();
+    L1i_to_L1e.checkConnTotalNum();
+    L1i_to_L1i.checkConnTotalNum();
+    if (CX::Comm::getRank() == 0)
+        for (CX::S32 j = 0; j < L1e_to_L1e.getNumEPJ(); j++)
+        {
+            std::cout <<"Id = "<< j << " n_link " << L1e_to_L1e[j].n_link << std::endl;
+            for (CX::S32 i = 0; i < L1e_to_L1e[j].n_link; i++)
+                std::cout  << L1e_to_L1e[j].info[i].target << " ";
+            std::cout << std::endl;
+        }
     SetRandomPotential(L1e, brunel_params::mean_potential, brunel_params::sigma_potential);
     SetRandomPotential(L1i, brunel_params::mean_potential, brunel_params::sigma_potential);
-     CX::S32 step = 1;
+    CX::S32 step = 1;
     CX::Comm::barrier();
     if (CX::Comm::getRank() == 0)
         std::cout << "init time " << CX::GetWtime() - init_offset << std::endl;
